@@ -59,14 +59,14 @@ header p {
 }
 
 /* ── Nav Tabs ── */
-nav {
+body > nav {
   display: flex;
   justify-content: center;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   overflow-x: auto;
 }
-nav button {
+body > nav button {
   background: none;
   border: none;
   border-bottom: 3px solid transparent;
@@ -82,10 +82,10 @@ nav button {
   align-items: center;
   gap: 0.4rem;
 }
-nav button:hover {
+body > nav button:hover {
   color: var(--text);
 }
-nav button.active {
+body > nav button.active {
   color: var(--text);
   border-bottom-color: var(--accent-hover);
   font-weight: 600;
@@ -426,7 +426,7 @@ footer a:hover {
 }
 
 /* ═══════════════════════════════════════
-   Relatos Styles
+   Reports Styles
    ═══════════════════════════════════════ */
 
 /* ── Documentation content wrapper ── */
@@ -727,6 +727,187 @@ footer a:hover {
 /* ── Relato pages: cancel main's top padding (hero already provides spacing) ── */
 .relato-hero + main {
   padding-top: 0;
+}
+
+/* ── Table of Contents ── */
+.toc {
+  margin-bottom: 2rem;
+}
+.toc h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+.toc ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-left: 2px solid var(--border);
+  padding-left: 0.9rem;
+}
+.toc ol li a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.15s;
+}
+.toc ol li a:hover {
+  color: var(--blue);
+}
+
+/* ── Relato Section ── */
+.relato-section {
+  margin-bottom: 2.75rem;
+}
+.relato-section h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.troubleshooting-heading::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.4em;
+  vertical-align: -0.15em;
+  background-color: #e3b341;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+.relato-section h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 2rem 0 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.relato-section p {
+  font-size: 0.93rem;
+  color: var(--text);
+  line-height: 1.8;
+  margin-bottom: 0.85rem;
+}
+.relato-section p:last-child {
+  margin-bottom: 0;
+}
+.relato-section ul,
+.relato-section ol {
+  font-size: 0.93rem;
+  color: var(--text);
+  line-height: 1.8;
+  padding-left: 1.5rem;
+  margin-bottom: 0.85rem;
+}
+.relato-section li {
+  margin-bottom: 0.3rem;
+}
+.relato-section a {
+  color: var(--blue);
+  text-decoration: none;
+}
+.relato-section a:hover {
+  text-decoration: underline;
+}
+.relato-section pre {
+  background: #010409;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1.1rem 0;
+  position: relative;
+}
+.relato-section pre[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0.5rem;
+  left: 1.25rem;
+  font-size: 0.7rem;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+.relato-section pre[data-lang] {
+  padding-top: 2rem;
+}
+.copy-btn {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.15rem;
+  line-height: 0;
+  transition: color 0.15s;
+}
+.copy-btn:hover {
+  color: var(--text);
+}
+.copy-btn.copied {
+  color: #3fb950;
+}
+.relato-section pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  color: #e6edf3;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+.relato-section figure {
+  margin: 1.5rem 0;
+}
+.relato-section figure img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: block;
+}
+.relato-section figcaption {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+.relato-section code {
+  background: #1c2128;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.82em;
+  padding: 0.1em 0.4em;
+  color: #e6c980;
+}
+.relato-section kbd {
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.8em;
+  padding: 0.1em 0.45em;
+  color: var(--text);
 }
 
 /* ── Responsive ── */

@@ -1,350 +1,311 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MAC0470 Desenvolvimento de Software Livre</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <header>
-      <div
-        style="
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC0470 Desenvolvimento de Software Livre</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header>
+    <div style="
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 1.25rem;
           flex-wrap: wrap;
-        "
-      >
-        <a
-          href="https://github.com/ciziks"
-          target="_blank"
-          style="text-decoration: none; flex-shrink: 0"
-        >
-          <img
-            src="https://github.com/ciziks.png"
-            alt="Lucas Ciziks"
-            style="
+        ">
+      <a href="https://github.com/ciziks" target="_blank" style="text-decoration: none; flex-shrink: 0">
+        <img src="https://github.com/ciziks.png" alt="Lucas Ciziks" style="
               width: 100px;
               height: 100px;
               border-radius: 50%;
               border: 2px solid var(--border);
               display: block;
-            "
-          />
-        </a>
-        <div style="text-align: left">
-          <h1>
-            <a
-              href="https://github.com/ciziks"
-              target="_blank"
-              style="color: inherit; text-decoration: none"
-              ><span>Lucas Ciziks</span></a
-            >
-          </h1>
-          <h1 style="margin-top: 0.2rem">
-            MAC0470 · Desenvolvimento de Software Livre 🐧
-          </h1>
-          <p>Universidade de São Paulo</p>
+            " />
+      </a>
+      <div style="text-align: left">
+        <h1>
+          <a href="https://github.com/ciziks" target="_blank" style="color: inherit; text-decoration: none"><span>Lucas
+              Ciziks</span></a>
+        </h1>
+        <h1 style="margin-top: 0.2rem">
+          MAC0470 · Desenvolvimento de Software Livre 🐧
+        </h1>
+        <p>Universidade de São Paulo</p>
+      </div>
+    </div>
+    <span class="course-badge" style="margin-top: 1rem">
+      Instituto de Matemática e Estatística · 2026</span>
+  </header>
+
+  <nav>
+    <button class="active" onclick="showSection('kernel', this)">
+      <span class="dot" style="background: #e36209"></span>
+      Ciclo Kernel Linux
+    </button>
+    <button onclick="showSection('oss', this)">
+      <span class="dot" style="background: #8957e5"></span>
+      Projeto Software Livre
+    </button>
+    <button onclick="showSection('debian', this)">
+      <span class="dot" style="background: #d70a53"></span>
+      Debian
+    </button>
+  </nav>
+
+  <main>
+    <!-- ── Ciclo Kernel Linux ── -->
+    <section id="kernel" class="section active">
+      <div class="section-header">
+        <div class="section-icon" style="background: #271b0d">🐧</div>
+        <div>
+          <h2>Ciclo Kernel Linux</h2>
+          <p>Desenvolvimento e contribuição no kernel Linux IIO</p>
         </div>
       </div>
-      <span class="course-badge" style="margin-top: 1rem">
-        Instituto de Matemática e Estatística · 2026</span
-      >
-    </header>
 
-    <nav>
-      <button class="active" onclick="showSection('kernel', this)">
-        <span class="dot" style="background: #e36209"></span>
-        Ciclo Kernel Linux
-      </button>
-      <button onclick="showSection('oss', this)">
-        <span class="dot" style="background: #8957e5"></span>
-        Projeto Software Livre
-      </button>
-      <button onclick="showSection('debian', this)">
-        <span class="dot" style="background: #d70a53"></span>
-        Debian
-      </button>
-    </nav>
-
-    <main>
-      <!-- ── Ciclo Kernel Linux ── -->
-      <section id="kernel" class="section active">
-        <div class="section-header">
-          <div class="section-icon" style="background: #271b0d">🐧</div>
-          <div>
-            <h2>Ciclo Kernel Linux</h2>
-            <p>Desenvolvimento e contribuição no kernel Linux</p>
+      <div class="cards-list">
+        <!-- Relato 0 -->
+        <div class="card card-done">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">Relato 0</span>
+              <span class="card-date">· 27/02</span>
+            </div>
+            <span class="badge badge-done">Completo</span>
+          </div>
+          <h3>
+            <a href="reports/relato-00.html" class="card-title-link">0) Dual Boot + SSH/VPN </a>
+          </h3>
+          <p>
+            Instalando o Debian 13 Trixie em dual boot com Windows 10,
+            incluindo resolução de problemas de particionamento. Em seguida,
+            configuração de acesso remoto via VPN e SSH para acessar o desktop
+            durante as aulas presenciais.
+          </p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">dual-boot</span>
+              <span class="tag">linux</span>
+              <span class="tag">ssh</span>
+              <span class="tag">vpn</span>
+              <span class="tag">tailscale</span>
+            </div>
+            <a href="reports/relato-00.html" class="read-link">Ler relato →</a>
           </div>
         </div>
 
-        <div class="cards-list">
-          <!-- Relato 0 -->
-          <div class="card badge-done">
-            <div class="card-top">
-              <div class="card-meta">
-                <span class="card-number">Relato 0</span>
-                <span class="card-date">· 25/02</span>
-              </div>
-              <span class="badge badge-done">Completo</span>
+        <!-- Relato 1 -->
+        <div class="card card-done">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">relato 01</span>
+              <span class="card-date">· 27/02</span>
             </div>
-            <h3>
-              <a href="relatos/relato-00.html" class="card-title-link"
-                >Configurando Dual Boot + SSH</a
-              >
-            </h3>
-            <p>
-              Instalando o Debian 13 Trixie em dual boot com Windows 10,
-              incluindo resolução de problemas de particionamento. Em seguida,
-              configuração de acesso remoto via VPN e SSH para acessar o desktop
-              durante as aulas presenciais.
-            </p>
-            <div class="card-footer">
-              <div class="tags">
-                <span class="tag">dual-boot</span>
-                <span class="tag">linux</span>
-                <span class="tag">ssh</span>
-                <span class="tag">setup</span>
-              </div>
-              <a href="relatos/relato-00.html" class="read-link"
-                >Ler relato →</a
-              >
-            </div>
+            <span class="badge badge-done">Completo</span>
           </div>
-
-          <!-- Relato 1 -->
-          <div class="card card-active">
-            <div class="card-top">
-              <div class="card-meta">
-                <span class="card-number">relato 01</span>
-                <span class="card-date">· 25/02</span>
-              </div>
-              <span class="badge badge-active">Em Progresso</span>
+          <h3>
+            <a href="reports/relato-01.html" class="card-title-link">1) Ambiente de Teste para
+              Desenvolvimento do Kernel Linux</a>
+          </h3>
+          <p>
+            Configuração do ambiente de teste com QEMU e libvirt: criação do diretório de trabalho,
+            script de ambiente, boot de VM ARM64, acesso SSH e compartilhamento de arquivos via virtiofs.
+          </p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">qemu</span>
+              <span class="tag">libvirt</span>
+              <span class="tag">setup</span>
+              <span class="tag">IIO</span>
             </div>
-            <h3>
-              <a href="relatos/relato-01.html" class="card-title-link"
-                >Setting up a test environment for Linux Kernel Dev using QEMU
-                and libvirt</a
-              >
-            </h3>
-            <p>A ser definido...</p>
-            <div class="card-footer">
-              <div class="tags">
-                <span class="tag">qemu</span>
-                <span class="tag">libvirt</span>
-                <span class="tag">setup</span>
-                <span class="tag">IIO</span>
-              </div>
-              <a href="relatos/relato-01.html" class="read-link"
-                >Ler Relato →</a
-              >
-            </div>
-          </div>
-
-          <!-- Relato 2 -->
-          <div class="card">
-            <div class="card-top">
-              <span class="card-number">Relato 02</span>
-              <span class="badge badge-pending">Pendente</span>
-            </div>
-            <h3>
-              <a href="relatos/relato-02.html" class="card-title-link"
-                >Building and booting a custom Linux kernel for ARM</a
-              >
-            </h3>
-            <p>A ser definido...</p>
-            <div class="card-footer">
-              <div class="tags">
-                <span class="tag">arm</span>
-                <span class="tag">build</span>
-                <span class="tag">kw</span>
-              </div>
-              <a href="relatos/relato-02.html" class="read-link"
-                >Ler Relato →</a
-              >
-            </div>
-          </div>
-
-          <!-- Relato 3 -->
-          <div class="card">
-            <div class="card-top">
-              <span class="card-number">Relato 03</span>
-              <span class="badge badge-pending">Pendente</span>
-            </div>
-            <h3>
-              <a href="relatos/relato-03.html" class="card-title-link"
-                >Introduction to Linux kernel build configuration and modules</a
-              >
-            </h3>
-            <p>A ser definido...</p>
-            <div class="card-footer">
-              <div class="tags">
-                <span class="tag">modules</span>
-                <span class="tag">kconfig</span>
-                <span class="tag">Kbuild</span>
-              </div>
-              <a href="relatos/relato-03.html" class="read-link"
-                >Ler Relato →</a
-              >
-            </div>
-          </div>
-
-          <!-- Relato 4 -->
-          <div class="card">
-            <div class="card-top">
-              <span class="card-number">Relato 04</span>
-              <span class="badge badge-pending">Pendente</span>
-            </div>
-            <h3>
-              <a href="relatos/relato-04.html" class="card-title-link"
-                >Introduction to Linux kernel Character Device Drivers</a
-              >
-            </h3>
-            <p>A ser definido...</p>
-            <div class="card-footer">
-              <div class="tags">
-                <span class="tag">drivers</span>
-                <span class="tag">char-device</span>
-                <span class="tag">kernel</span>
-              </div>
-              <a href="relatos/relato-04.html" class="read-link"
-                >Ler Relato →</a
-              >
-            </div>
-          </div>
-
-          <!-- Relato 5 -->
-          <div class="card">
-            <div class="card-top">
-              <div class="card-meta">
-                <span class="card-number">Relato 05</span>
-              </div>
-              <span class="badge badge-pending">Pendente</span>
-            </div>
-            <h3>
-              <a href="relatos/relato-05.html" class="card-title-link"
-                >Usando o KWorkflow (kw)</a
-              >
-            </h3>
-            <p>A ser definido</p>
-            <div class="card-footer">
-              <div class="tags">
-                <span class="tag">kw</span>
-              </div>
-              <a href="relatos/relato-05.html" class="read-link"
-                >Ler Relato →</a
-              >
-            </div>
-          </div>
-
-          <!-- Relato 6 -->
-          <div class="card">
-            <div class="card-top">
-              <div class="card-meta">
-                <span class="card-number">Relato 06</span>
-              </div>
-              <span class="badge badge-pending">Pendente</span>
-            </div>
-            <h3>
-              <a href="relatos/relato-06.html" class="card-title-link"
-                >Introdução ao subsistema Industrial I/O (IIO)</a
-              >
-            </h3>
-            <p>A ser definido...</p>
-            <div class="card-footer">
-              <div class="tags">
-                <span class="tag">IIO</span>
-              </div>
-              <a href="relatos/relato-06.html" class="read-link"
-                >Ler Relato →</a
-              >
-            </div>
-          </div>
-
-          <!-- Relato 7 -->
-          <div class="card">
-            <div class="card-top">
-              <div class="card-meta">
-                <span class="card-number">Relato 07</span>
-              </div>
-              <span class="badge badge-pending">Pendente</span>
-            </div>
-            <h3>
-              <a href="relatos/relato-07.html" class="card-title-link"
-                >Enviando Patches para o projeto Linux</a
-              >
-            </h3>
-            <p>A ser definido...</p>
-            <div class="card-footer">
-              <div class="tags">
-                <span class="tag">patches</span>
-              </div>
-              <a href="relatos/relato-07.html" class="read-link"
-                >Ler Relato →</a
-              >
-            </div>
+            <a href="reports/relato-01.html" class="read-link">Ler Relato →</a>
           </div>
         </div>
-      </section>
 
-      <!-- ── Projeto Software Livre ── -->
-      <section id="oss" class="section">
-        <div class="section-header">
-          <div class="section-icon" style="background: #1b1228">🔓</div>
-          <div>
-            <h2>Projeto Software Livre</h2>
-            <p>Contribuições e atividades em projetos de software livre</p>
+        <!-- Relato 2 -->
+        <div class="card card-active">
+          <div class="card-top">
+            <span class="card-number">Relato 02</span>
+            <span class="badge badge-active">Em Progresso</span>
+          </div>
+          <h3>
+            <a href="reports/relato-02.html" class="card-title-link">2) Building and booting a custom Linux kernel for
+              ARM</a>
+          </h3>
+          <p>A ser definido...</p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">arm</span>
+              <span class="tag">build</span>
+              <span class="tag">kw</span>
+            </div>
+            <a href="reports/relato-02.html" class="read-link">Ler Relato →</a>
           </div>
         </div>
-        <div class="placeholder-card">
-          <div class="icon">🚧</div>
-          <h3>Em breve</h3>
-          <p>O conteúdo desta seção será adicionado ao longo da disciplina.</p>
-        </div>
-      </section>
 
-      <!-- ── Debian ── -->
-      <section id="debian" class="section">
-        <div class="section-header">
-          <div class="section-icon" style="background: #2a0510">🌀</div>
-          <div>
-            <h2>Debian</h2>
-            <p>
-              Empacotamento, manutenção e contribuição para o projeto Debian
-            </p>
+        <!-- Relato 3 -->
+        <div class="card">
+          <div class="card-top">
+            <span class="card-number">Relato 03</span>
+            <span class="badge badge-pending">Pendente</span>
+          </div>
+          <h3>
+            <a href="reports/relato-03.html" class="card-title-link">Introduction to Linux kernel build configuration
+              and modules</a>
+          </h3>
+          <p>A ser definido...</p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">modules</span>
+              <span class="tag">kconfig</span>
+              <span class="tag">Kbuild</span>
+            </div>
+            <a href="reports/relato-03.html" class="read-link">Ler Relato →</a>
           </div>
         </div>
-        <div class="placeholder-card">
-          <div class="icon">🚧</div>
-          <h3>Em breve</h3>
-          <p>O conteúdo desta seção será adicionado ao longo da disciplina.</p>
+
+        <!-- Relato 4 -->
+        <div class="card">
+          <div class="card-top">
+            <span class="card-number">Relato 04</span>
+            <span class="badge badge-pending">Pendente</span>
+          </div>
+          <h3>
+            <a href="reports/relato-04.html" class="card-title-link">Introduction to Linux kernel Character Device
+              Drivers</a>
+          </h3>
+          <p>A ser definido...</p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">drivers</span>
+              <span class="tag">char-device</span>
+              <span class="tag">kernel</span>
+            </div>
+            <a href="reports/relato-04.html" class="read-link">Ler Relato →</a>
+          </div>
         </div>
-      </section>
-    </main>
 
-    <footer>
-      <p>
-        <a href="https://github.com/ciziks" target="_blank"
-          >github.com/ciziks</a
-        >
-        &nbsp;·&nbsp; MAC0470 Desenvolvimento de Software Livre &nbsp;·&nbsp;
-        IME-USP
-      </p>
-    </footer>
+        <!-- Relato 5 -->
+        <div class="card">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">Relato 05</span>
+            </div>
+            <span class="badge badge-pending">Pendente</span>
+          </div>
+          <h3>
+            <a href="reports/relato-05.html" class="card-title-link">Usando o KWorkflow (kw)</a>
+          </h3>
+          <p>A ser definido</p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">kw</span>
+            </div>
+            <a href="reports/relato-05.html" class="read-link">Ler Relato →</a>
+          </div>
+        </div>
 
-    <script>
-      function showSection(id, btn) {
-        document
-          .querySelectorAll(".section")
-          .forEach((s) => s.classList.remove("active"));
-        document
-          .querySelectorAll("nav button")
-          .forEach((b) => b.classList.remove("active"));
-        document.getElementById(id).classList.add("active");
-        btn.classList.add("active");
-      }
-    </script>
-  </body>
+        <!-- Relato 6 -->
+        <div class="card">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">Relato 06</span>
+            </div>
+            <span class="badge badge-pending">Pendente</span>
+          </div>
+          <h3>
+            <a href="reports/relato-06.html" class="card-title-link">Introdução ao subsistema Industrial I/O (IIO)</a>
+          </h3>
+          <p>A ser definido...</p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">IIO</span>
+            </div>
+            <a href="reports/relato-06.html" class="read-link">Ler Relato →</a>
+          </div>
+        </div>
+
+        <!-- Relato 7 -->
+        <div class="card">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">Relato 07</span>
+            </div>
+            <span class="badge badge-pending">Pendente</span>
+          </div>
+          <h3>
+            <a href="reports/relato-07.html" class="card-title-link">Enviando Patches para o projeto Linux</a>
+          </h3>
+          <p>A ser definido...</p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">patches</span>
+            </div>
+            <a href="reports/relato-07.html" class="read-link">Ler Relato →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Projeto Software Livre ── -->
+    <section id="oss" class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background: #1b1228">🔓</div>
+        <div>
+          <h2>Projeto Software Livre</h2>
+          <p>Contribuições e atividades em projetos de software livre</p>
+        </div>
+      </div>
+      <div class="placeholder-card">
+        <div class="icon">🚧</div>
+        <h3>Em breve</h3>
+        <p>O conteúdo desta seção será adicionado ao longo da disciplina.</p>
+      </div>
+    </section>
+
+    <!-- ── Debian ── -->
+    <section id="debian" class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background: #2a0510">🌀</div>
+        <div>
+          <h2>Debian</h2>
+          <p>
+            Empacotamento, manutenção e contribuição para o projeto Debian
+          </p>
+        </div>
+      </div>
+      <div class="placeholder-card">
+        <div class="icon">🚧</div>
+        <h3>Em breve</h3>
+        <p>O conteúdo desta seção será adicionado ao longo da disciplina.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      <a href="https://github.com/ciziks" target="_blank">github.com/ciziks</a>
+      &nbsp;·&nbsp; MAC0470 Desenvolvimento de Software Livre &nbsp;·&nbsp;
+      IME-USP
+    </p>
+  </footer>
+
+  <script>
+    function showSection(id, btn) {
+      document
+        .querySelectorAll(".section")
+        .forEach((s) => s.classList.remove("active"));
+      document
+        .querySelectorAll("nav button")
+        .forEach((b) => b.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      btn.classList.add("active");
+    }
+  </script>
+</body>
+
 </html>

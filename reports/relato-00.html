@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC0470 - DualBoot </title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <div class="top-nav">
+    <a href="../index.html">← Ciclo Kernel Linux</a>
+    <span class="site-name">MAC0470</span>
+  </div>
+
+  <div class="relato-hero">
+    <div class="tut-label">
+      <span class="tut-number">Relato 0</span>
+      <span class="tut-date">· 27/02/2026</span>
+      <span class="badge badge-done">Completo</span>
+    </div>
+    <h1>Configurando Dual Boot + SSH</h1>
+    <p class="description">
+      Instalando o Debian 13 Trixie em dual boot com Windows 10, incluindo
+      resolução de problemas de particionamento. Em seguida, configuração de
+      acesso remoto via VPN e SSH para acessar o desktop durante as aulas
+      presenciais.
+    </p>
+    <div class="tags">
+      <span class="tag">dual-boot</span>
+      <span class="tag">linux</span>
+      <span class="tag">ssh</span>
+      <span class="tag">vpn</span>
+      <span class="tag">tailscale</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="doc-content">
+      <nav class="toc">
+        <h3>Sumário</h3>
+        <ol>
+          <li><a href="#introducao">1) Introdução</a></li>
+          <li><a href="#dual-boot">2) Configurando o Dual Boot</a></li>
+          <li><a href="#vpn-ssh">3) Configurando Conexão Remota (VPN + SSH)</a></li>
+        </ol>
+      </nav>
+      <section class="relato-section" id="introducao">
+        <h2>1) Introdução</h2>
+        <p>
+          Para essa disciplina, é fortemente recomendado o uso de uma máquina Linux para o desenvolvimento do kernel.
+          Como disponho apenas de um laptop Mac e um desktop Windows, cogitei inicialmente virtualizar um Debian via UTM
+          no Mac para levá-lo às aulas. Porém, dada a natureza da disciplina, que já envolve emular um kernel Linux
+          dentro do Linux, essa abordagem adicionaria uma terceira camada de virtualização, comprometendo a
+          performance e possivelmente gerando diversos problemas durante meu desenvolvimento.
+        </p>
+        <p>
+          Assim, seguindo a sugestão do monitor David, optei por
+          instalar dual boot na minha máquina desktop e acessá-la remotamente via SSH pelo Mac durante as aulas
+          presenciais. Desse modo, esse tutorial 0 mostra minha experiência para instalar e configurar o dual boot e
+          também como estabelecer a conexão ssh via VPN.
+        </p>
+      </section>
+
+      <section class="relato-section" id="dual-boot">
+        <h2>2) Configurando o Dual Boot</h2>
+        <p><i>Referência: <a href="https://wiki.debian.org/DualBoot/Windows" target="_blank">Debian - DualBoot
+              Windows</a></i></p>
+
+        <h3>Preparação da Mídia de Instalação</h3>
+
+        <p>
+          Comecei baixando a imagem do
+          <a href="https://www.debian.org/download" target="_blank">Debian Trixie 13</a>, para arquitetura
+          <code>amd64</code>, utilizando o instalador online, pois tinha conexão com a internet e o arquivo era
+          consideravelmente menor. Em seguida, conectei um pen-drive de 15 GB e utilizei o
+          <a href="https://etcher.balena.io/" target="_blank">Balena Etcher</a>, recomendado pela documentação oficial,
+          para torná-lo bootável com a imagem do Debian (alternativas como o Rufus também funcionariam normalmente).
+        </p>
+
+        <h3>Particionamento no Windows</h3>
+
+        <p>
+          Utilizei o Gerenciador de Disco do Windows para criar uma partição de 50 GB no HD destinada ao Debian,
+          deixando o espaço não alocado disponível para o instalador reconhecer.
+        </p>
+
+        <h3>Boot pelo Pendrive e Instalação</h3>
+
+        <p>
+          Com o pen-drive pronto, reiniciei a máquina, entrei na BIOS (tecla <kbd>F12</kbd>) e configurei o pen-drive
+          (SanDisk) como prioridade de boot.
+        </p>
+
+        <figure>
+          <img src="../images/report-0/BIOS.jpeg"
+            alt="BIOS com pen-drive SanDisk selecionado como prioridade de boot" />
+          <figcaption>BIOS — pen-drive SanDisk configurado como prioridade de boot</figcaption>
+        </figure>
+
+        <p>Após salvar (<kbd>F10</kbd>) e reiniciar, o instalador do Debian iniciou corretamente.</p>
+
+        <figure>
+          <img src="../images/report-0/Debian-Installer.jpeg" alt="Tela inicial do instalador do Debian" />
+          <figcaption>Tela inicial do Debian Installer</figcaption>
+        </figure>
+
+        <p>
+          Seguindo os passos padrões: seleção de idioma, país, teclado, configuração de rede, nome da máquina e
+          criação de usuários; Cheguei ao passo de particionamento sem problemas.
+        </p>
+
+        <h3>Troubleshooting — Partição Não Reconhecida</h3>
+
+        <p>
+          No passo de particionamento, o instalador do Debian não reconhecia a partição que havia criado, lendo o HD
+          inteiro como um único bloco. Para resolver o problema, tomei as seguintes medidas
+          (<a href="https://forums.debian.net/viewtopic.php?t=159693" target="_blank">[Solved] Debian
+            installer doesn't detect free space in hard disk</a>):
+        </p>
+        <ul>
+          <li>Confirmei que o BitLocker do Windows estava desativado;</li>
+          <li>Desativei o Secure Boot na BIOS;</li>
+          <li>Desabilitei o Fast Startup do Windows;</li>
+          <li>Reformatei o HD, alterando-o para <code>NTFS</code> e a partição destinada ao Debian como
+            <code>ext4</code>.</li>
+        </ul>
+
+        <p>
+          Após reiniciar e aplicar todas as mudanças, o instalador reconheceu a partição, e pude instalar
+          o sistema corretamente.
+        </p>
+
+        <figure>
+          <img src="../images/report-0/Partitions.png"
+            alt="Partições reconhecidas corretamente pelo instalador do Debian" />
+          <figcaption>Partições reconhecidas corretamente após as correções</figcaption>
+        </figure>
+
+        <p>
+          Com a instalação concluída, reiniciei a máquina (lembrando de reordenar as prioridades de boot na BIOS) e o
+          GNU GRUB apareceu oferecendo a seleção entre Windows e Debian.
+        </p>
+
+        <figure>
+          <img src="../images/report-0/Dual%20Boot.jpeg" alt="GNU GRUB com opções de boot para Windows e Debian" />
+          <figcaption>GNU GRUB — seleção entre Windows e Debian</figcaption>
+        </figure>
+
+        <p>O sistema inicializou normalmente e o login no Debian foi realizado com sucesso.</p>
+
+        <figure>
+          <img src="../images/report-0/Login.png" alt="Tela de login do Debian" />
+          <figcaption>Tela de login do Debian após a instalação</figcaption>
+        </figure>
+      </section>
+
+      <section class="relato-section" id="vpn-ssh">
+        <h2>3) Configurando Conexão Remota (VPN + SSH)</h2>
+        <p><i>Referência: <a href="https://tailscale.com/docs/how-to/quickstart" target="_blank">Tailscale Documentation</a></i></p>
+
+
+        <p>
+          Para acessar o desktop remotamente a partir do Mac durante as aulas presenciais, foi necessário estabelecer
+          uma conexão privada utilizando o <a href="https://tailscale.com/" target="_blank">Tailscale</a>, uma VPN
+          <i>mesh</i> sugerida pelo monitor da disciplina e disponível gratuitamente.
+        </p>
+
+        <h3>Instalação no Mac</h3>
+
+        <p>
+          A instalação no macOS é feita via pacote <code>.pkg</code>, disponível em
+          <a href="https://tailscale.com/download/mac" target="_blank">Tailscale - Download Mac</a>. Segui o fluxo
+          padrão de instalação sem nenhuma configuração adicional.
+        </p>
+
+        <h3>Instalação no Debian</h3>
+
+        <p>
+          Como o Debian havia sido instalado do zero, o <code>curl</code> ainda não estava disponível. Primeiro
+          atualizei os pacotes e instalei as dependências necessárias:
+        </p>
+
+        <pre data-lang="bash"><code>sudo apt update
+sudo apt upgrade
+sudo apt install curl</code></pre>
+
+        <p>
+          Com o <code>curl</code> disponível, instalei o Tailscale seguindo a
+          <a href="https://tailscale.com/docs/install/linux" target="_blank">documentação oficial para Linux</a>:
+        </p>
+
+        <pre data-lang="bash"><code>curl -fsSL https://tailscale.com/install.sh | sh</code></pre>
+
+        <h3>Configuração Tailscale</h3>
+
+        <p>Após a instalação, iniciei o cliente Tailscale e habilitei o suporte a SSH pela VPN:</p>
+
+        <pre data-lang="bash"><code># Iniciar o cliente e autenticar na rede Tailscale
+sudo tailscale up
+
+# Habilitar SSH via Tailscale
+tailscale set --ssh</code></pre>
+
+        <p>
+          O comando <code>tailscale set --ssh</code> configura a máquina para aceitar conexões SSH autenticadas
+          diretamente pela VPN, sem necessidade de gerenciar chaves manualmente.
+        </p>
+
+        <h3>Verificação SSH</h3>
+
+        <p>
+          Após autenticar ambas as máquinas, acessei o portal do Tailscale e confirmei que tanto o Mac quanto o
+          desktop Debian apareceram como dispositivos ativos na rede privada.
+        </p>
+
+        <figure>
+          <img src="../images/report-0/Machines.png" alt="Portal do Tailscale com as máquinas conectadas" />
+          <figcaption>Portal do Tailscale com as máquinas conectadas</figcaption>
+        </figure>
+
+        <p>
+          Com ambas as máquinas na mesma rede Tailscale, a conexão SSH do Mac para o Debian foi estabelecida com
+          sucesso, permitindo o desenvolvimento remoto durante as aulas presenciais.
+        </p>
+
+        <figure>
+          <img src="../images/report-0/ssh-debian.png" alt="Mac conectado via SSH ao Debian com sucesso!" />
+          <figcaption>Mac conectado via SSH ao Debian com sucesso!</figcaption>
+        </figure>
+
+        <p>Agora estamos prontos para iniciar o <a href="relato-01.html">Tutorial 1</a>!</p>
+      </section>
+
+
+    </div>
+
+    <hr class="nav-divider" />
+    <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
+      <a href="relato-01.html">Tutorial 1 →</a>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      <a href="../index.html">← Voltar ao início</a>
+      &nbsp;·&nbsp; MAC0470 Desenvolvimento de Software Livre · IME-USP
+    </p>
+  </footer>
+  <script src="../js/copy-code.js"></script>
+</body>
+
+</html>

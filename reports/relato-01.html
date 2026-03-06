@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC0470 - Tutorial 1</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <div class="top-nav">
+    <a href="../index.html">← Ciclo Kernel Linux</a>
+    <span class="site-name">MAC0470</span>
+  </div>
+
+  <div class="relato-hero">
+    <div class="tut-label">
+      <span class="tut-number">Tutorial 01</span>
+      <span class="tut-date">· 27/02/2026</span>
+      <span class="badge badge-done">Completo</span>
+    </div>
+    <h1>
+      Ambiente de Teste para
+      Desenvolvimento do Kernel Linux
+    </h1>
+    <p class="description">
+      Configuração de um ambiente de teste isolado para desenvolvimento do kernel Linux utilizando QEMU e libvirt.
+      Inclui criação do diretório de trabalho, script de ambiente, download e expansão da imagem ARM64,
+      boot via QEMU e virsh, configuração de acesso SSH, verificação de módulos e compartilhamento de
+      arquivos entre host e VM via virtiofs.
+    </p>
+    <div class="tags">
+      <span class="tag">qemu</span>
+      <span class="tag">libvirt</span>
+      <span class="tag">setup</span>
+      <span class="tag">IIO</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="doc-content">
+      <nav class="toc">
+        <h3>Sumário</h3>
+        <ol>
+          <li><a href="#introducao">1) Introdução</a></li>
+          <li><a href="#dir-script">2) Preparando Diretório e Script de Teste</a></li>
+          <li><a href="#configurar-vm">3) Configurar e Rodar VM</a></li>
+          <li><a href="#ssh-acesso">4) Configuração de Acesso SSH (Host → VM)</a></li>
+          <li><a href="#lsmod">5) Verificando Módulos do Kernel</a></li>
+          <li><a href="#file-sharing">6) Compartilhamento de Arquivos Host ↔ VM</a></li>
+        </ol>
+      </nav>
+
+      <section class="relato-section" id="introducao">
+        <h2>1) Introdução</h2>
+        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/qemu-libvirt-setup/" target="_blank">FLUSP — QEMU and
+              libvirt setup for Linux kernel development</a></i></p>
+
+        <p>
+          O objetivo deste relato é documentar minha experiência seguindo o tutorial de configuração do ambiente de
+          teste para o desenvolvimento do kernel Linux utilizando <code>QEMU</code> e <code>libvirt</code>.
+        </p>
+        <p>O kernel Linux é o núcleo do sistema operacional, uma camada que fica entre o hardware e os
+          programas que utilizamos. Durante o desenvolvimento do kernel, é fundamental contar com um ambiente isolado
+          para testar nossas alterações. Utilizar diretamente o kernel do sistema operacional seria muito arriscado, pois um
+          erro pode travar ou corromper toda a
+          máquina. <i>Containers</i> também não são uma opção adequada nesse caso, pois compartilham o kernel do sistema
+          <i>host</i>, o que
+          inviabiliza testar um kernel personalizado com segurança.
+        </p>
+        <p>
+          Desse modo, a melhor alternativa é usar uma <strong>máquina virtual</strong>. Utilizaremos o <code>QEMU</code> como
+          emulador (<i>hypervisor</i>) para subir as VMs
+          e o <code>libvirt</code> como camada de gerenciamento, facilitando operações como iniciar, parar e
+          inspecionar as máquinas virtuais via linha de comando.
+        </p>
+        <p>O primeiro passo foi instalar as dependências necessárias:</p>
+
+        <pre data-lang="bash"><code>sudo apt upgrade
+sudo apt install qemu-system libvirt-daemon-system virtinst libguestfs-tools wget</code></pre>
+
+      </section>
+
+      <section class="relato-section" id="dir-script">
+        <h2>2) Preparando Diretório e Script de Teste</h2>
+
+        <p>
+          Seguindo o passo 1 do tutorial, criei o diretório <code>/home/lk_dev</code>, ajustei as permissões para o
+          usuário e grupo <code>libvirt-qemu</code> e adicionei meu usuário ao grupo. Esse passo não apresentou
+          nenhum problema.
+        </p>
+
+        <pre data-lang="bash"><code>sudo mkdir /home/lk_dev
+sudo chown libvirt-qemu:libvirt-qemu /home/lk_dev
+sudo adduser $USER libvirt</code></pre>
+
+        <p>Após reiniciar a máquina para aplicar as alterações de grupo, criei o script de ambiente e o tornei
+          executável:</p>
+
+        <pre data-lang="bash"><code>touch /home/lk_dev/activate.sh
+chmod +x /home/lk_dev/activate.sh</code></pre>
+
+        <p>
+          Utilizando o <code>nano</code>, copiei o script disponível no tutorial para o arquivo
+          <code>activate.sh</code>. Esse script centraliza as variáveis de ambiente utilizadas nos próximos passos,
+          facilitando o fluxo de trabalho:
+        </p>
+
+        <pre data-lang="bash"><code>#!/usr/bin/env bash
+
+# environment variables
+export LK_DEV_DIR='/home/lk_dev' # path to testing environment directory
+
+# prompt preamble
+prompt_preamble='(LK-DEV)'
+
+# colors
+GREEN="\e[32m"
+PINK="\e[35m"
+BOLD="\e[1m"
+RESET="\e[0m"
+
+# launch Bash shell session w/ env vars defined
+echo -e "${GREEN}Entering shell session for Linux Kernel Dev${RESET}"
+echo -e "${GREEN}To exit, type 'exit' or press Ctrl+D.${RESET}"
+exec bash --rcfile <(echo "source ~/.bashrc; PS1=\"\[${BOLD}\]\[${PINK}\]${prompt_preamble}\[${RESET}\] \$PS1\"")</code></pre>
+
+        <p>Ao executá-lo, o ambiente ficou configurado corretamente:</p>
+
+        <figure>
+          <img src="../images/report-01/script.png" alt="Saída do script activate.sh sendo executado" />
+          <figcaption>Saída do <code>activate.sh</code> com as variáveis de ambiente carregadas</figcaption>
+        </figure>
+      </section>
+
+      <section class="relato-section" id="configurar-vm">
+        <h2>3) Configurar e Rodar VM</h2>
+
+        <h3>Baixando a Imagem do Debian</h3>
+        <p>
+          Após criar o diretório <code>/home/lk_dev/vm</code> para os arquivos da VM e adicionar seu caminho no
+          <code>activate.sh</code> (lembrando de recarregar o script), tentei baixar a imagem do Debian 12 sugerida no tutorial,
+          mas ela não estava mais disponível. Assim, baixei a versão diária mais recente, prestando atenção em dois
+          detalhes importantes: o formato deve ser <code>.qcow2</code> (específico para o <code>QEMU</code>) e a arquitetura deve
+          ser <code>arm64</code>.
+        </p>
+
+        <pre data-lang="bash"><code>wget --directory-prefix="${VM_DIR}" \
+  http://cdimage.debian.org/cdimage/cloud/bookworm/daily/20260227-2401/debian-12-nocloud-arm64-daily-20260227-2401.qcow2
+
+mv "${VM_DIR}/debian-12-nocloud-arm64-daily-20260227-2401.qcow2" \
+   "${VM_DIR}/base_arm64_img.qcow2"</code></pre>
+
+        <h3>Identificando a Partição rootfs</h3>
+        <p>
+          Antes de expandir a imagem, é necessário identificar qual partição corresponde ao sistema de arquivos raiz
+          (<code>rootfs</code> ou <code>/</code>), associada ao formato <code>ext4</code>:
+        </p>
+
+        <figure>
+          <img src="../images/report-01/check-rootfs.png" alt="Saída do comando para verificar partições da imagem" />
+          <figcaption>Identificando a partição rootfs — neste caso, <code>/dev/sda</code></figcaption>
+        </figure>
+
+        <h3>Expandindo a Imagem</h3>
+        <p>
+          Com a partição <code>/dev/sda</code> identificada como <code>rootfs</code>, criei uma nova imagem a partir da base e
+          expandi a partição para 5GB. A imagem original tinha apenas 3GB, o que não é suficiente para compilar
+          o kernel com módulos adicionais.
+        </p>
+        <p>
+          Vale notar que, após o <code>virt-resize</code>, o label da partição <code>rootfs</code> pode mudar em relação à imagem
+          original. Ao rodar novamente o <code>virt-filesystems</code> na nova imagem, descobri que o novo <code>rootfs</code>
+          (<code>/</code>) passou a ser <code>/dev/sda2</code>.
+        </p>
+
+        <h3>Copiando Arquivos de Boot</h3>
+        <p>
+          Para identificar os arquivos de <code>kernel</code> e <code>initrd</code> necessários para subir a VM, rodei:
+        </p>
+
+        <pre data-lang="bash"><code>virt-ls --add "${VM_DIR}/arm64_img.qcow2" --mount /dev/sda2 /boot</code></pre>
+
+        <p>
+          O comando retornou os nomes dos arquivos: <code>vmlinuz-6.1.0-43-arm64</code> e
+          <code>initrd.img-6.1.0-43-arm64</code>. Antes de criar o diretório de boot, adicionei a variável
+          <code>BOOT_DIR</code> ao <code>activate.sh</code>:
+        </p>
+
+        <pre data-lang="bash"><code>export BOOT_DIR="${LK_DEV_DIR}/arm64_boot"</code></pre>
+
+        <p>Em seguida, recarreguei o script, criei o diretório e copiei ambos os arquivos para lá:</p>
+
+        <pre data-lang="bash"><code>mkdir "${BOOT_DIR}"
+virt-copy-out -a "${VM_DIR}/arm64_img.qcow2" \
+  /boot/vmlinuz-6.1.0-43-arm64 \
+  /boot/initrd.img-6.1.0-43-arm64 \
+  "${BOOT_DIR}"</code></pre>
+
+        <h3>Rodando a VM com QEMU</h3>
+        <p>
+          Com os arquivos de boot prontos, adicionei a função <code>launch_vm_qemu()</code> ao
+          <code>activate.sh</code>, atentando aos parâmetros de kernel, initrd e partição raiz:
+        </p>
+
+        <pre data-lang="bash"><code># Launches a VM with a custom kernel and initrd
+function launch_vm_qemu() {
+    qemu-system-aarch64 \
+        -M virt,gic-version=3 \
+        -m 2G -cpu cortex-a57 \
+        -smp 2 \
+        -netdev user,id=net0 -device virtio-net-device,netdev=net0 \
+        -initrd "${BOOT_DIR}/initrd.img-6.1.0-43-arm64" \
+        -kernel "${BOOT_DIR}/vmlinuz-6.1.0-43-arm64" \
+        -append "loglevel=8 root=/dev/vda2 rootwait" \
+        -device virtio-blk-pci,drive=hd \
+        -drive if=none,file="${VM_DIR}/arm64_img.qcow2",format=qcow2,id=hd \
+        -nographic
+}
+export -f launch_vm_qemu</code></pre>
+
+        <p>
+          Após recarregar o <code>activate.sh</code> e executar a função, a VM inicializou corretamente. O login foi
+          feito com o usuário <code>root</code> sem senha. Para desligar, basta rodar <code>poweroff</code> dentro
+          da VM.
+        </p>
+
+        <figure>
+          <img src="../images/report-01/launch-qemu.png" alt="VM arm64 bootando via QEMU no terminal" />
+          <figcaption>VM arm64 inicializada com sucesso via <code>launch_vm_qemu()</code></figcaption>
+        </figure>
+
+        <h3>Gerenciando a VM com libvirt</h3>
+        <p>
+          O libvirt facilita o gerenciamento das VMs e estabelece uma rede virtual para comunicação com o host.
+          Para ativá-lo:
+        </p>
+
+        <pre data-lang="bash"><code># Iniciar o daemon do libvirt
+sudo systemctl start libvirtd
+
+# Iniciar a rede virtual interna
+sudo virsh net-start default</code></pre>
+
+        <p>
+          Em seguida, adicionei a função <code>create_vm_virsh()</code> ao <code>activate.sh</code>. Um detalhe
+          importante: as funções precisam ser exportadas com <code>export -f</code>, caso contrário não ficam
+          disponíveis mesmo dentro do próprio script. (Menciono isso pois acabei esquecendo e tive que analisar por um tempo até encontrar o problema)
+        </p>
+
+        <pre data-lang="bash"><code>function create_vm_virsh() {
+    sudo virt-install \
+      --name "arm64" \
+      --memory 2048 \
+      --arch aarch64 --machine virt \
+      --osinfo detect=on,require=off \
+      --import \
+      --features acpi=off \
+      --disk path="${VM_DIR}/arm64_img.qcow2" \
+      --boot kernel=${BOOT_DIR}/vmlinuz-6.1.0-43-arm64,initrd=${BOOT_DIR}/initrd.img-6.1.0-43-arm64,kernel_args="loglevel=8 root=/dev/vda2 rootwait" \
+      --network bridge:virbr0 \
+      --graphics none
+}
+export -f create_vm_virsh</code></pre>
+
+        <p>
+          Após salvar e recarregar o script, o resultado do boot foi idêntico ao do <code>launch_vm_qemu</code>. A
+          função <code>create_vm_virsh</code> só precisa ser executada uma vez para registrar a VM no libvirt. Nas
+          interações seguintes, basta rodar:
+        </p>
+
+        <pre data-lang="bash"><code># Iniciar e conectar ao console da VM
+sudo virsh start --console arm64
+
+# Desligar a VM
+sudo virsh shutdown arm64</code></pre>
+      </section>
+
+      <section class="relato-section" id="ssh-acesso">
+        <h2>4) Configuração de Acesso SSH (Host → VM)</h2>
+
+        <h3>Iniciando a VM</h3>
+        <p>Com as dependências instaladas e a VM criada conforme o tutorial, iniciei a máquina virtual:</p>
+
+        <pre data-lang="bash"><code>sudo virsh start --console arm64</code></pre>
+
+        <h3>Troubleshooting - Instalando o Servidor SSH</h3>
+        <p>
+          Seguindo o tutorial, notei que o diretório <code>/etc/ssh</code> não existia na VM. Para resolver, instalei o
+          servidor
+          OpenSSH diretamente:
+        </p>
+
+        <pre data-lang="bash"><code>sudo apt update
+sudo apt install openssh-server</code></pre>
+
+        <figure>
+          <img src="../images/report-01/ssh-solved.png" alt="Instalação do openssh-server na VM" />
+          <figcaption>OpenSSH Server instalado com sucesso na VM</figcaption>
+        </figure>
+
+        <p>
+          Em seguida, editei o arquivo de configuração para permitir login <code>root</code> e conexões sem senha (apenas para
+          ambiente de desenvolvimento local):
+        </p>
+
+        <pre data-lang="bash"><code>nano /etc/ssh/sshd_config
+# Descomentar as linhas:
+# PermitRootLogin prohibit-password
+# PermitEmptyPasswords yes</code></pre>
+
+        <figure>
+          <img src="../images/report-01/openssh-server.png" alt="Configuração do sshd_config na VM" />
+          <figcaption>Salvando configurações do <code>sshd_config</code></figcaption>
+        </figure>
+
+        <p>Após salvar, reiniciei a VM para aplicar as configurações.</p>
+
+        <h3>Troubleshooting — Problema de MTU</h3>
+        <p>
+          No dia seguinte, ao tentar conectar novamente, me deparei com um erro de MTU na rede da VM. A causa foi que
+          a rede virtual interna do <code>libvirt</code> não havia sido iniciada. Para corrigir e evitar que eu esquecesse novamente
+          de iniciá-la:
+        </p>
+
+        <pre data-lang="bash"><code># Iniciar a rede na sessão atual
+sudo virsh net-start default
+
+# Configurar para iniciar automaticamente
+sudo virsh net-autostart default</code></pre>
+
+        <figure>
+          <img src="../images/report-01/net-list.png" alt="Saída de virsh net-list mostrando rede default ativa" />
+          <figcaption>Rede virtual <code>default</code> ativa após <code>net-autostart</code></figcaption>
+        </figure>
+
+        <h3>Testando a Conexão (<code>scp</code>)</h3>
+        <p>
+          Com a rede ativa, capturei o IP da VM e testei a transferência de arquivos via <code>scp</code>:
+        </p>
+
+        <pre data-lang="bash"><code># Na VM: criar arquivo de teste
+nano hello.txt   # >> "Hello World"
+# Ctrl+] para desanexar do console
+
+# No host: copiar o arquivo da VM
+scp root@ip-da-vm>/home/lk_dev/hello.txt /tmp/bar
+cat /tmp/bar</code></pre>
+
+        <figure>
+          <img src="../images/report-01/result-scp.png" alt="Resultado do scp e cat /tmp/bar no host" />
+          <figcaption>Transferência via <code>scp</code> funcionando — conteúdo do arquivo recebido no host</figcaption>
+        </figure>
+
+      </section>
+
+      <section class="relato-section" id="lsmod">
+        <h2>5) Verificando Módulos do Kernel</h2>
+
+        <p>
+          Para este passo, é necessário estar conectado à VM — seja via console direto
+          (<code>sudo virsh start --console arm64</code>) ou via SSH (<code>ssh root@&lt;ip-da-vm&gt;</code>).
+          Com a sessão aberta, listei os módulos carregados e os salvei em um arquivo para referência no próximo tutorial:
+        </p>
+
+        <pre data-lang="bash"><code>lsmod > vm_mod_list</code></pre>
+
+        <figure>
+          <img src="../images/report-01/lsmod.png" alt="Saída do lsmod na VM arm64" />
+          <figcaption>Módulos do kernel carregados na VM arm64</figcaption>
+        </figure>
+      </section>
+
+      <section class="relato-section" id="file-sharing">
+        <h2>6) Compartilhamento de Arquivos Host ↔ VM </h2>
+
+        <h3>Configuração do Diretório Compartilhado</h3>
+        <p>No host, criei o diretório que será compartilhado com a VM:</p>
+
+        <pre data-lang="bash"><code>cd /home/lk_dev/
+mkdir shared_arm64</code></pre>
+
+        <p>Em seguida, editei a definição da VM para adicionar o <code>&lt;filesystem&gt;</filesystem></code> compartilhado (utilizando
+          <code>nano</code>):</p>
+
+        <pre data-lang="bash"><code>sudo virsh edit arm64</code></pre>
+
+        <p>Foram necessárias duas alterações no XML da VM. Primeiro, dentro de <code>&lt;devices&gt;</code>:</p>
+
+        <pre data-lang="xml"><code>&lt;filesystem type='mount' accessmode='passthrough'&gt;
+  &lt;driver type='virtiofs' /&gt;
+  &lt;source dir='/home/lk_dev/shared_arm64'/&gt;
+  &lt;target dir='mount_tag'/&gt;
+&lt;/filesystem&gt;</code></pre>
+
+        <p>
+          E também dentro de <code>&lt;domain&gt;</code>, o bloco <code>&lt;memoryBacking&gt;</code>, necessário
+          para o <code>virtiofs</code> funcionar corretamente, pois ele requer memória compartilhada entre host e VM:
+        </p>
+
+        <pre data-lang="xml"><code>&lt;memoryBacking&gt;
+  &lt;source type='memfd'/&gt;
+  &lt;access mode='shared'/&gt;
+&lt;/memoryBacking&gt;</code></pre>
+
+        <h3>Troubleshooting — virtiofsd não encontrado</h3>
+        <p>
+          Ao tentar iniciar a VM com a nova configuração, recebi um erro:
+        </p>
+
+        <figure>
+          <img src="../images/report-01/error-share.png" alt="Erro ao tentar iniciar a VM com virtiofs configurado" />
+          <figcaption>Erro ao iniciar a VM após adicionar o filesystem compartilhado</figcaption>
+        </figure>
+
+        <p>
+          A causa era que o <code>virtiofsd</code> não estava instalado no host:
+        </p>
+
+        <figure>
+          <img src="../images/report-01/virtiofsd-missing.png"
+            alt="Mensagem indicando que virtiofsd não foi encontrado" />
+          <figcaption>Detalhe do erro — <code>virtiofsd</code> ausente no host</figcaption>
+        </figure>
+
+        <p>A solução foi simples:</p>
+
+        <pre data-lang="bash"><code>sudo apt install virtiofsd</code></pre>
+
+        <h3>Montando o Diretório na VM</h3>
+        <p>Com a VM rodando novamente, montei o diretório compartilhado de dentro da VM:</p>
+
+        <pre data-lang="bash"><code>mount -t virtiofs mount_tag /mnt/mount/shared</code></pre>
+
+        <p>Para validar, criei um arquivo de teste no host:</p>
+
+        <pre data-lang="bash"><code># No host
+nano test.txt  # "Hello World! Shared directory is working!"</code></pre>
+
+        <p>E confirmei que ele aparecia corretamente dentro da VM:</p>
+
+        <figure>
+          <img src="../images/report-01/mount-worked.png" alt="Compartilhamento virtiofs funcionando entre host e VM" />
+          <figcaption>Arquivo <code>test.txt</code> criado no host visível dentro da VM — compartilhamento funcionando!
+          </figcaption>
+        </figure>
+
+        <p>Pronto! Agora, o ambiente de Teste para o desenvolvimento do Kernel Linux está completo! :)</p>
+      </section>
+    </div>
+
+    <hr class="nav-divider" />
+    <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
+      <a href="relato-00.html">← DualBoot + SSH</a>
+      <a href="relato-02.html">Próximo relato →</a>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      <a href="../index.html">← Voltar ao início</a>
+      &nbsp;·&nbsp; MAC0470 Desenvolvimento de Software Livre · IME-USP
+    </p>
+  </footer>
+  <script src="../js/copy-code.js"></script>
+</body>
+
+</html>
