@@ -1,54 +1,378 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relato 02 — MAC0470</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
-    <link rel="stylesheet" href="../style.css" />
-  </head>
-  <body>
 
-    <div class="top-nav">
-      <a href="../index.html">← Ciclo Kernel Linux</a>
-      <span class="site-name"><strong>@ciziks</strong> · MAC0470</span>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC0470 - Tutorial 2</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <div class="top-nav">
+    <a href="../index.html">← Ciclo Kernel Linux</a>
+    <span class="site-name">MAC0470</span>
+  </div>
+
+  <div class="relato-hero">
+    <div class="tut-label">
+      <span class="tut-number">Tutorial 02</span>
+      <span class="tut-date">· 04/03/2026</span>
+      <span class="badge badge-done">Completo</span>
+    </div>
+    <h1>Compilando o Kernel Linux para ARM64 com <code>kw</code></h1>
+    <p class="description">
+      Configuração do kworkflow (<code>kw</code>) para desenvolvimento do subsistema IIO, incluindo
+      instalação da ferramenta, clonagem do IIO, compilação cruzada do kernel Linux para ARM64
+      e deploy na VM de teste. Cobre também o troubleshooting de dependências e o processo de boot do kernel
+      personalizado.
+    </p>
+    <div class="tags">
+      <span class="tag">kw</span>
+      <span class="tag">kernel</span>
+      <span class="tag">arm64</span>
+      <span class="tag">iio</span>
+      <span class="tag">build</span>
+      <span class="tag">deploy</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="doc-content">
+      <nav class="toc">
+        <h3>Sumário</h3>
+        <ol>
+          <li><a href="#introducao">1) Introdução</a></li>
+          <li><a href="#instalando-kw">2) Instalando o kw</a></li>
+          <li><a href="#clonando-iio">3) Clonando a Tree IIO</a></li>
+          <li><a href="#configurando-kw">4) Configurando o kw para o IIO</a></li>
+          <li><a href="#configurando-build">5) Configurando a Compilação do Kernel</a></li>
+          <li><a href="#compilando">6) Compilando o Kernel</a></li>
+          <li><a href="#deploy">7) Deploy do Kernel na VM</a></li>
+        </ol>
+      </nav>
+
+      <section class="relato-section" id="introducao">
+        <h2>1) Introdução</h2>
+        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/build-linux-for-arm-kw/ target="_blank">FLUSP — Building and booting a custom Linux kernel for ARM using kw</a></i></p>
+        <p>
+          O objetivo deste relato é documentar minha experiência seguindo o tutorial de compilação e
+          deploy do kernel Linux para ARM64 utilizando o <code>kworkflow</code> (<code>kw</code>),
+          uma ferramenta desenvolvida pelo grupo FLUSP para facilitar o ciclo de desenvolvimento do kernel.
+        </p>
+        <p>
+          O fluxo geral deste tutorial consiste em: instalar o <code>kw</code>, clonar a árvore do
+          subsistema IIO (que será nosso alvo de contribuição), configurar a compilação cruzada para
+          ARM64, compilar o kernel e fazer o deploy na VM criada no tutorial anterior.
+        </p>
+      </section>
+
+      <section class="relato-section" id="instalando-kw">
+        <h2>2) Instalando o <code>kw</code></h2>
+
+        <p>Seguindo o tutorial, não encontrei nenhum problema nesta etapa. Os passos foram:</p>
+
+        <ol>
+          <li>Adicionei o caminho <code>/kw</code> no <code>activate.sh</code>:
+            <pre data-lang="bash"><code>export KW_DIR="${LK_DEV_DIR}/kw"</code></pre>
+          </li>
+          <li>Clonei o repositório do <code>kworkflow</code>:
+            <pre data-lang="bash"><code>git clone https://github.com/kworkflow/kworkflow.git "$KW_DIR"</code></pre>
+          </li>
+          <li>Dentro do <code>KW_DIR</code>, troquei para a branch sugerida pelo tutorial:
+            <pre data-lang="bash"><code>cd "$KW_DIR"
+git switch unstable</code></pre>
+          </li>
+          <li>Rodei o script de instalação:
+            <pre data-lang="bash"><code>./setup.sh --full-installation</code></pre>
+          </li>
+          <li>Para garantir que estava na versão mais recente:
+            <pre data-lang="bash"><code>kw self-update --unstable</code></pre>
+          </li>
+        </ol>
+
+        <p><code>kw</code> instalado corretamente!</p>
+      </section>
+
+      <section class="relato-section" id="clonando-iio">
+        <h2>3) Clonando a Tree IIO</h2>
+
+        <p>Também sem problemas. Os passos foram:</p>
+
+        <ol>
+          <li>Adicionei o caminho da árvore IIO no <code>activate.sh</code>:
+            <pre data-lang="bash"><code>export IIO_TREE="${LK_DEV_DIR}/iio"</code></pre>
+          </li>
+          <li>Clonei a branch de teste do repositório IIO:
+            <pre data-lang="bash"><code>git clone git://git.kernel.org/pub/scm/linux/kernel/git/jic23/iio.git "${IIO_TREE}" \
+  --branch testing --single-branch --depth 10</code></pre>
+          </li>
+        </ol>
+
+        <p>
+          Apesar do tutorial sugerir clonar sem especificar <code>--branch</code> e sem <code>--depth</code> para
+          entender melhor a código do kernel depois, não disponho de espaço em disco suficiente para isso,
+          então utilizei esses parâmetros para reduzir o tamanho do clone.
+        </p>
+      </section>
+
+      <section class="relato-section" id="configurando-kw">
+        <h2>4) Configurando o <code>kw</code>> para o IIO</h2>
+
+        <p>Com a árvore do IIO clonada, inicializei o <code>kw</code> dentro dela:</p>
+
+        <pre data-lang="bash"><code>cd "$IIO_TREE"
+kw init</code></pre>
+
+        <p>Antes de prosseguir, iniciei a VM:</p>
+
+        <pre data-lang="bash"><code>sudo systemctl start libvirtd
+sudo virsh start --console arm64</code></pre>
+
+        <p>
+          (O <code>sudo virsh net-start default</code> não foi necessário pois já configurei
+          <code>net-autostart</code> no relato anterior)
+        </p>
+
+        <p>
+          Para obter o IP da VM e configurar a conexão remota padrão do <code>kw</code>:
+        </p>
+
+        <pre data-lang="bash"><code># Descobrir o IP da VM
+sudo virsh net-dhcp-leases default
+
+# Adicionar e definir o remote padrão
+kw remote --add arm64 root@&lt;vm-ip&gt; --set-default</code></pre>
+
+        <p>Testando a conexão com <code>kw ssh</code>, a conexão foi estabelecida com sucesso.</p>
+      </section>
+
+      <section class="relato-section" id="configurando-build">
+        <h2>5) Configurando a Compilação do Kernel</h2>
+
+        <h3>Gerando o .config base</h3>
+        <p>Dentro da <code>IIO_TREE</code>, gerei o arquivo de configuração padrão para ARM64
+          e em seguida atualizei-o com o <code>olddefconfig</code> para preencher quaisquer opções novas:</p>
+
+        <pre data-lang="bash"><code>make ARCH=arm64 defconfig
+make ARCH=arm64 olddefconfig</code></pre>
+
+        <figure>
+          <img src="../images/report-02/4-make-def-olddef-config.png"
+            alt="Saída dos comandos make defconfig e make olddefconfig para ARM64" />
+          <figcaption><code>make defconfig</code> e <code>make olddefconfig</code> gerando o <code>.config</code> base</figcaption>
+        </figure>
+
+        <h3>Troubleshooting — rsync não encontrado</h3>
+        <p>
+          Ao tentar copiar a lista de módulos da VM para o IIO com <code>kw ssh --get</code>,
+          o comando falhou com um erro no <code>rsync</code>:
+        </p>
+
+        <figure>
+          <img src="../images/report-02/4-error-rsync.png"
+            alt="Erro rsync: command not found ao tentar kw ssh --get" />
+          <figcaption>Erro ao copiar a lista de módulos — <code>rsync</code> ausente na VM</figcaption>
+        </figure>
+
+        <p>A solução foi instalar o <code>rsync</code> dentro da VM:</p>
+
+        <pre data-lang="bash"><code># Acessar a VM
+kw ssh
+
+# Dentro da VM
+sudo apt install rsync
+exit</code></pre>
+
+        <p>Após a instalação, o comando <code>kw ssh --get '~/vm_mod_list'</code> funcionou corretamente:</p>
+
+        <figure>
+          <img src="../images/report-02/4-sucess-rsync.png"
+            alt="kw ssh --get executado com sucesso após instalar rsync" />
+          <figcaption>Lista de módulos copiada com sucesso após instalar o <code>rsync</code> na VM</figcaption>
+        </figure>
+
+        <h3>Salvando o .config com <code>kernel-config-manager</code></h3>
+        <p>
+          Com o <code>.config</code> gerado, utilizei o <code>kw kernel-config-manager</code> para
+          salvar, listar e restaurar configurações de forma organizada:
+        </p>
+
+        <figure>
+          <img src="../images/report-02/4-kw-kernel-config-manager.png"
+            alt="kw kernel-config-manager salvando, listando e restaurando configurações" />
+          <figcaption><code>kw kernel-config-manager --save</code>, <code>--list</code> e <code>--get</code> gerenciando o <code>.config</code></figcaption>
+        </figure>
+
+        <h3>Editando o .config com o  menu do <code>kw</code> </h3>
+        <p>
+          O <code>kw</code> oferece uma TUI (interface de texto) para editar o <code>.config</code>
+          com segurança, evitando edições manuais que possam corromper a configuração:
+        </p>
+
+        <pre data-lang="bash"><code>kw build --menu</code></pre>
+
+        <figure>
+          <img src="../images/report-02/4-%20kw-menu.png"
+            alt="TUI do kw build --menu mostrando as categorias de configuração do kernel" />
+          <figcaption>Interface TUI do <code>kw build --menu</code> para edição segura do <code>.config</code></figcaption>
+        </figure>
+
+        <p>
+          Dentro da TUI, naveguei até <strong>General setup → Local version</strong> para
+          identificar e alterar a versão local do kernel:
+        </p>
+
+        <figure>
+          <img src="../images/report-02/4-local-version-kw-menu.png"
+            alt="Campo Local version no menu de configuração do kernel" />
+          <figcaption>Campo <em>Local version</em> dentro do menu de configuração</figcaption>
+        </figure>
+
+        <p>
+          Defini o valor como <code>-CIZIKS</code> e desabilitei o <strong>Automatically append version information to the version string</strong>, o que resultará na versão
+          <code>6.16.0-rc1-CIZIKS+</code> ao executar <code>uname -r</code> na VM:
+        </p>
+
+        <figure>
+          <img src="../images/report-02/4-kw-menu-ciziks.png"
+            alt="Local version definido como -CIZIKS no menu de configuração" />
+          <figcaption>Versão local definida como <code>-CIZIKS</code> — identificador personalizado do kernel</figcaption>
+        </figure>
+
+        <p>Para confirmar as informações do kernel antes de compilar:</p>
+
+        <pre data-lang="bash"><code>kw build --info</code></pre>
+
+        <figure>
+          <img src="../images/report-02/4-kw-build-info.png"
+            alt="kw build --info mostrando nome e versão do kernel a ser compilado" />
+          <figcaption><code>kw build --info</code> — kernel <code>6.16.0-rc1</code> com 10 módulos a compilar</figcaption>
+        </figure>
+      </section>
+
+      <section class="relato-section" id="compilando">
+        <h2>6) Compilando o Kernel</h2>
+
+        <p>
+          Para compilação cruzada para ARM64, foi necessário instalar
+          <code>gcc-aarch64-linux-gnu</code>:
+        </p>
+
+        <pre data-lang="bash"><code>sudo apt update && sudo apt install gcc-aarch64-linux-gnu</code></pre>
+
+        <p>Em seguida, configurei o <code>kw</code> para a compilação cruzada:</p>
+
+        <pre data-lang="bash"><code>kw config build.arch 'arm64'
+kw config build.cross_compile 'aarch64-linux-gnu-'
+kw config build.kernel_img_name 'Image.gz'</code></pre>
+
+        <p>Para verificar a configuração de build atual:</p>
+
+        <figure>
+          <img src="../images/report-02/5-kw-build-show.png"
+            alt="kw config --show build exibindo as configurações de compilação" />
+          <figcaption><code>kw config --show build</code> — configurações para compilação cruzada ARM64</figcaption>
+        </figure>
+
+        <p>Com tudo configurado, executei a compilação:</p>
+
+        <pre data-lang="bash"><code>kw build</code></pre>
+
+        <p>Após a conclusão, confirmei que a imagem do kernel e os módulos foram gerados:</p>
+
+        <figure>
+          <img src="../images/report-02/5-ls-arch-modules.png"
+            alt="ls arch/arm64/boot/Image e ls modules.order confirmando a compilação" />
+          <figcaption>Imagem <code>arch/arm64/boot/Image</code> e <code>modules.order</code> gerados com sucesso</figcaption>
+        </figure>
+      </section>
+
+      <section class="relato-section" id="deploy">
+        <h2>7) Deploy do Kernel na VM</h2>
+
+        <h3>Tentativa inicial e erro</h3>
+        <p>Com o kernel compilado, tentei fazer o deploy dos módulos na VM com o seguinte comando:</p>
+
+        <pre data-lang="bash"><code>kw deploy --modules</code></pre>
+
+        <figure>
+          <img src="../images/report-02/6-error-deploy.png"
+            alt="Erro no kw deploy --modules com install_modules: command not found" />
+          <figcaption>Erro no deploy — <code>install_modules: command not found</code> na VM</figcaption>
+        </figure>
+
+        <h3>Troubleshooting — <code>kw deploy --setup</code></h3>
+        <p>
+          Por sugestão do monitor, tentei rodar <code>kw deploy --setup</code> primeiro, que envia
+          os arquivos necessários e instala os pacotes para que o deploy funcione. Porém, o erro
+          persistiu:
+        </p>
+
+        <figure>
+          <img src="../images/report-02/6-troubleshooting-deploy-setup.png"
+            alt="kw deploy --setup seguido de kw deploy --modules ainda com o mesmo erro" />
+          <figcaption><code>kw deploy --setup</code> executado, mas o erro continuou na tentativa seguinte</figcaption>
+        </figure>
+
+        <h3>Resolução — Apontando o kernel compilado no activate.sh</h3>
+        <p>
+          Após múltiplas tentativas de refazer os passos do tutorial, sem sucesso, o monitor David me sugeriu testar senão era uma falha visual do boot, mas que a VM poderia estar funcionando normalmente.
+          Assim, decidi avançar no tutorial e
+          verificar se o problema se resolveria. A chave foi atualizar o <code>activate.sh</code>
+          para apontar diretamente para a imagem do kernel recém-compilada na IIO,
+          em vez dos arquivos de boot originais:
+        </p>
+
+        <pre data-lang="diff"><code>--- a/activate.sh
++++ b/activate.sh
+@@ launch_vm_qemu()
+-        -kernel "${BOOT_DIR}/&lt;kernel&gt;" \
++        -kernel "${IIO_TREE}/arch/arm64/boot/Image" \
+
+@@ create_vm_virsh()
+-        --boot kernel=${BOOT_DIR}/&lt;kernel&gt;,...
++        --boot kernel=${IIO_TREE}/arch/arm64/boot/Image,...</code></pre>
+
+        <p>
+          Com o <code>activate.sh</code> atualizado, recriei a VM para aplicar a nova configuração:
+        </p>
+
+        <pre data-lang="bash"><code>sudo virsh shutdown arm64
+sudo virsh undefine arm64
+create_vm_virsh</code></pre>
+
+        <p>
+          Ao bootar a VM e verificar a versão do kernel, o resultado confirmou que o kernel
+          personalizado estava em execução:
+        </p>
+
+        <pre data-lang="bash"><code>root@localhost:~# uname --kernel-release
+6.16.0-rc1-CIZIKS+</code></pre>
+
+        <p>
+          O kernel compilado a partir do IIO com a versão local <code>-CIZIKS</code>
+          foi bootado com sucesso na VM! Agora o ambiente está pronto para desenvolvimento
+          e testes de patches no subsistema IIO.
+        </p>
+      </section>
     </div>
 
-    <div class="relato-hero">
-      <div class="tut-label">
-        <span class="tut-number">Relato 02</span>
-        <span class="badge badge-pending">Pendente</span>
-      </div>
-      <h1>Building and booting a custom Linux kernel for ARM</h1>
-      <div class="tags">
-        <span class="tag">arm</span>
-        <span class="tag">build</span>
-        <span class="tag">kw</span>
-      </div>
+    <hr class="nav-divider" />
+    <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
+      <a href="relato-01.html">← Ambiente de Teste</a>
+      <a href="relato-03.html">Próximo relato →</a>
     </div>
+  </main>
 
-    <main>
-      <div class="doc-content">
-        <div class="placeholder-card">
-          <div class="icon">🚧</div>
-          <h3>Trabalho em progresso</h3>
-          <p>Este relato será escrito assim que o tutorial for realizado.</p>
-        </div>
-      </div>
+  <footer>
+    <p>
+      <a href="../index.html">← Voltar ao início</a>
+      &nbsp;·&nbsp; MAC0470 Desenvolvimento de Software Livre · IME-USP
+    </p>
+  </footer>
+  <script src="../js/copy-code.js"></script>
+</body>
 
-      <hr class="nav-divider" />
-      <div class="tut-nav">
-        <a href="relato-01.html">← Relato 01</a>
-        <a href="relato-03.html">Próximo relato →</a>
-      </div>
-    </main>
-
-    <footer>
-      <p>
-        <a href="../index.html">← Voltar ao início</a>
-        &nbsp;·&nbsp; MAC0470 Desenvolvimento de Software Livre · IME-USP
-      </p>
-    </footer>
-
-  </body>
 </html>
