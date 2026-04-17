@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Relato 07 — MAC0470</title>
+  <title>MAC0470 - Contribuição</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
   <link rel="stylesheet" href="../style.css" />
 </head>
@@ -21,7 +21,7 @@
       <span class="tut-date">· 14/04/2026</span>
       <span class="badge badge-done">Completo</span>
     </div>
-    <h1>Contribuição no Kernel Linux — Subsistema IIO</h1>
+    <h1>Contribuição no Kernel Linux - Subsistema IIO</h1>
     <p class="description">
       Substituição das chamadas <code>mutex_lock</code> e <code>mutex_unlock</code> pela macro
       <code>guard(mutex)</code> e <code>scoped_guard(mutex)</code> no driver <code>ad7280a.c</code>
@@ -29,12 +29,13 @@
     </p>
     <div class="tags">
       <span class="tag">IIO</span>
+      <span class="tag">adc</span>
+      <span class="tag">ad7280a</span>
       <span class="tag">kernel</span>
       <span class="tag">patch</span>
       <span class="tag">mutex</span>
       <span class="tag">guard</span>
-      <span class="tag">kw</span>
-      <span class="tag">contribuição</span>
+      <span class="tag">scoped_guard</span>
     </div>
   </div>
 
@@ -50,7 +51,8 @@
           <li><a href="#commits">5) Criando os commits atômicos</a></li>
           <li><a href="#ci">6) Enviando para o CI</a></li>
           <li><a href="#oficial">7) Enviando o Patch oficialmente</a></li>
-          <li><a href="#feedback">8) Aguardando Feedback</a></li>
+          <li><a href="#v2">8) Desenvolvimento v2</a></li>
+          <li><a href="#v3">9) Desenvolvimento v3</a></li>
         </ol>
       </nav>
 
@@ -60,7 +62,7 @@
         <p>
           <i>Referência:
             <a href="https://flusp.ime.usp.br/courses/linux-kernel-patch-suggestions/" target="_blank">
-              FLUSP — Sugestões de Patches para o Kernel Linux (Sugestão 1)
+              FLUSP - Sugestões de Patches para o Kernel Linux (Sugestão 1)
             </a>
           </i>
         </p>
@@ -146,7 +148,7 @@ out:
         <p>
           <i>Referência:
             <a href="https://pad.riseup.net/p/DSL-USP-2026-kernel-patch-submission-keep" target="_blank">
-              Pad colaborativo — Kernel Patch Submission
+              Pad colaborativo - Kernel Patch Submission
             </a>
           </i>
         </p>
@@ -575,15 +577,165 @@ Content-Transfer-Encoding: 8bit</code></pre>
           O patch foi enviado para os mantenedores do subsistema IIO
           (<code>lars@metafoo.de</code>, <code>jic23@kernel.org</code>, <code>Michael.Hennerich@analog.com</code>,
           entre outros) e para a lista <code>linux-iio@vger.kernel.org</code>.
+          A contribuição pode ser acompanhada na lore do kernel:
+          <a href="https://lore.kernel.org/linux-iio/ad-fTZnNb3ASpLms@ashevche-desk.local/T/#t" target="_blank">
+            [PATCH v1] iio: adc: ad7280a - lore.kernel.org
+          </a>
         </p>
       </section>
 
-      <!-- ── 8) Feedback ── -->
-      <section class="relato-section" id="feedback">
-        <h2>8) Aguardando Feedback</h2>
+      <!-- ── 8) Desenvolvimento v2 ── -->
+      <section class="relato-section" id="v2">
+        <h2>8) Desenvolvimento v2</h2>
         <p>
-          Até o momento, estamos aguardando o feedback dos mantenedores oficiais para implementar
-          possíveis correções ou melhorias sugeridas. <em>Work in Progress...</em>
+          Em menos de 24 horas recebi uma réplica do revisor <strong>Andy Shevchenko</strong> apontando
+          três problemas:
+        </p>
+        <ol>
+          <li>
+            O conteúdo dentro de <code>scoped_guard(mutex, &amp;st-&gt;lock) { ... }</code> precisava ser
+            reindentado um nível para a direita (tab extra).
+          </li>
+          <li>
+            Em funções onde o mutex cobre toda a lógica restante, <code>guard()</code> seria preferível
+            ao <code>scoped_guard()</code> por legibilidade.
+          </li>
+          <li>
+            Uma linha de continuação de argumento dentro de <code>scoped_guard</code> estava com indentação incorreta.
+          </li>
+        </ol>
+        <p>Trecho do review (resumido):</p>
+        <pre data-lang="diff"><code>> -	mutex_lock(&st->lock);
+> +	scoped_guard(mutex, &st->lock) {
+
+All in this scope has to be reindented by one tab level up (to the right).
+
+> +		scoped_guard(mutex, &st->lock) {
+
+Has to be reindented. {} are not needed.
+
+But why not simply guard()()?
+-- Andy Shevchenko</code></pre>
+        <p>
+          Seguindo as sugestões, corrigi os erros de indentação (estava usando espaços em vez de tabs em
+          alguns lugares) e reavaliando o código, troquei os lugares onde usava <code>scoped_guard</code>
+          por <code>guard</code> para melhor legibilidade.
+        </p>
+        <p>Após as pequenas mudanças:</p>
+        <pre data-lang="bash"><code>git add .
+git commit --amend</code></pre>
+        <p>
+          Seguindo as guidelines de versionamento (com ajuda do monitor Marcelo), a nova mensagem de commit
+          ficou:
+        </p>
+        <pre data-lang="text"><code>iio: adc: ad7280a: use cleanup helpers guard() and scoped_guard() for mutex locking
+
+Replace open-coded mutex_lock/unlock pairs with the cleanup-based
+guard() and scoped_guard() helpers in ad7280a_write_thresh(),
+ad7280_show_balance_timer(), ad7280_store_balance_sw(),
+ad7280_store_balance_timer() and ad7280_read_raw().
+
+This removes the need for the err_unlock label and explicit
+mutex_unlock() calls, as the lock is now automatically released
+when the function returns or the guarded scope exits, regardless
+of the exit path.
+
+Signed-off-by: Lucas Ivars Cadima Ciziks &lt;lucas@ciziks.com&gt;
+Co-developed-by: Felipe Ribeiro de Souza &lt;felipers@usp.br&gt;
+Signed-off-by: Felipe Ribeiro de Souza &lt;felipers@usp.br&gt;
+---
+v2:
+  - Replace scoped_guard with guard as suggested by Andy Shevchenko (Code Legibility).
+  - Fix indentation issues.</code></pre>
+        <p>Verificando com o checkpatch:</p>
+        <pre data-lang="bash"><code>git format-patch -1 --stdout | ./scripts/checkpatch.pl --
+total: 0 errors, 0 warnings, 142 lines checked
+
+"[PATCH] iio: adc: ad7280a: use cleanup helpers guard() and" has no obvious style problems and is ready for submission.</code></pre>
+        <p>Submetendo novamente ao pipeline de CI para verificação:</p>
+        <pre data-lang="bash"><code>kw send-patch --send -1 -v2 --private \
+  --to=kernel@lists.ime.usp.br \
+  --cc=lucas@ciziks.com \
+  --cc=felipers@usp.br</code></pre>
+        <p>Após aprovação no pipeline, enviei novamente para a lista oficial:</p>
+        <pre data-lang="bash"><code>kw send-patch --send -1 -v2</code></pre>
+        <p>
+          Thread na lore:
+          <a href="https://lore.kernel.org/linux-iio/20260415160856.22231-1-lucas@ciziks.com/" target="_blank">
+            [PATCH v2] iio: adc: ad7280a - lore.kernel.org
+          </a>
+        </p>
+      </section>
+
+      <!-- ── 9) Desenvolvimento v3 ── -->
+      <section class="relato-section" id="v3">
+        <h2>9) Desenvolvimento v3</h2>
+        <p>
+          Andy Shevchenko respondeu novamente, apontando (espero) a última correção necessária.
+          O problema estava em <code>ad7280_show_balance_timer</code>:
+        </p>
+        <pre data-lang="diff"><code>> -	mutex_lock(&st->lock);
+> +	guard(mutex)(&st->lock);
+
+This will add some rather heavy operation into the critical section.
+Why do we need that? Please, use scoped_guard() in such cases.
+
+> -	mutex_unlock(&st->lock);
+>
+>  	if (ret < 0)
+>  		return ret;
+-- Andy Shevchenko</code></pre>
+        <p>
+          O revisor tem razão: nessa função o mutex protege apenas a leitura do registrador; o processamento
+          posterior (<code>FIELD_GET</code>, <code>sysfs_emit</code>) não precisa estar na seção crítica.
+          Na v1 eu já havia feito exatamente isso com <code>scoped_guard</code>, mas ao seguir o feedback
+          da v2 de priorizar <code>guard</code>, acabei expandindo desnecessariamente a seção crítica.
+          A solução é reverter para a abordagem da v1, agora com a indentação correta:
+        </p>
+        <pre data-lang="c"><code>static ssize_t ad7280_show_balance_timer(struct iio_dev *indio_dev,
+					 uintptr_t private,
+					 const struct iio_chan_spec *chan,
+					 char *buf)
+{
+	struct ad7280_state *st = iio_priv(indio_dev);
+	unsigned int msecs;
+	int ret;
+
+	scoped_guard(mutex, &st->lock)
+		ret = ad7280_read_reg(st, chan->address >> 8,
+					(chan->address & 0xFF) + AD7280A_CB1_TIMER_REG);
+
+	if (ret < 0)
+		return ret;
+
+	msecs = FIELD_GET(AD7280A_CB_TIMER_VAL_MSK, ret) * 71500;
+
+	return sysfs_emit(buf, "%u.%u\n", msecs / 1000, msecs % 1000);
+}</code></pre>
+        <p>Verificando com o checkpatch, nenhum erro de formatação. O commit com o changelog v3 ficou:</p>
+        <pre data-lang="text"><code>iio: adc: ad7280a: use cleanup helpers guard() and scoped_guard() for mutex locking
+
+...
+
+---
+v3:
+  - Restore scoped_guard() in ad7280_show_balance_timer() instead of
+    guard() to avoid holding the mutex during post-processing, as
+    suggested by Andy Shevchenko.
+
+v2:
+  - Replace scoped_guard with guard as suggested by Andy Shevchenko (Code Legibility).
+  - Fix indentation issues.</code></pre>
+        <p>Após emendar o commit, enviei o patch como v3:</p>
+        <pre data-lang="bash"><code>kw send-patch --send -1 -v3</code></pre>
+        <p>
+          Thread na lore:
+          <a href="https://lore.kernel.org/linux-iio/20260417131029.12568-1-lucas@ciziks.com/T/#u" target="_blank">
+            [PATCH v3] iio: adc: ad7280a - lore.kernel.org
+          </a>
+        </p>
+        <p>
+          Aguardando (com muita fé) a resposta final dos mantenedores. <em>Work in Progress...</em>
         </p>
       </section>
 
@@ -592,7 +744,6 @@ Content-Transfer-Encoding: 8bit</code></pre>
     <hr class="nav-divider" />
     <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
       <a href="relato-06.html">← Subsistema IIO</a>
-      <a href="#" class="disabled">Próximo relato →</a>
     </div>
   </main>
 

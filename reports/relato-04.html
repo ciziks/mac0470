@@ -53,7 +53,7 @@
 
       <section class="relato-section" id="introducao">
         <h2>1) Introdução</h2>
-        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/char-drivers-intro/" target="_blank">FLUSP — Introduction to Linux kernel Character Device Drivers</a></i></p>
+        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/char-drivers-intro/" target="_blank">FLUSP - Introduction to Linux kernel Character Device Drivers</a></i></p>
         <p>
           Este tutorial, embora seja o mais curto em termos de ações práticas, é denso em conteúdo conceitual.
           O foco é entender o que são <em>character devices</em> no Linux, como o kernel os identifica por meio
@@ -62,7 +62,7 @@
         </p>
         <p>
           No Linux, todo dispositivo é representado como um arquivo especial. Os <strong>character devices</strong>
-          são aqueles que transferem dados byte a byte — como terminais (<code>tty</code>) e dispositivos de
+          são aqueles que transferem dados byte a byte - como terminais (<code>tty</code>) e dispositivos de
           memória. Cada driver registra um <strong>major number</strong> único que o identifica no sistema, e pode
           gerenciar múltiplas instâncias por meio dos <strong>minor numbers</strong>.
         </p>
@@ -98,7 +98,7 @@
         <figure>
           <img src="../images/report-04/1-list-devices.png"
             alt="Saída de cat /proc/devices listando character e block devices com seus major numbers" />
-          <figcaption>Saída de <code>/proc/devices</code> — cada número à esquerda é o major registrado para o driver à direita</figcaption>
+          <figcaption>Saída de <code>/proc/devices</code> - cada número à esquerda é o major registrado para o driver à direita</figcaption>
         </figure>
 
         <p>
@@ -117,7 +117,7 @@
         <figure>
           <img src="../images/report-04/2-stat.png"
             alt="Saída do stat em uma linux image mostrando Device type com major 8 e minor 4" />
-          <figcaption>A imagem do Linux está armazenada como arquivo regular — o dispositivo responsável tem major 8 e minor 4</figcaption>
+          <figcaption>A imagem do Linux está armazenada como arquivo regular - o dispositivo responsável tem major 8 e minor 4</figcaption>
         </figure>
 
         <p>
@@ -338,7 +338,7 @@ wrote 256 bytes to buffer</code></pre>
       <section class="relato-section" id="exercicios">
         <h2>6) Exercícios</h2>
 
-        <h3>Exercício 1 — Exibir major e minor ao inicializar o módulo</h3>
+        <h3>Exercício 1 - Exibir major e minor ao inicializar o módulo</h3>
         <p>
           O primeiro exercício propõe adicionar ao <code>simple_char_init()</code> um log que exiba o par
           major:minor alocados pelo driver. Um detalhe importante: o <code>dev_id</code> só é preenchido
@@ -359,7 +359,7 @@ root@localhost:~# dmesg | tail
 [   71.017271] Initialize simple_char module.
 [   71.017886] 238:0 # (--> Major:Minor)</code></pre>
 
-        <h3>Exercício 2 — Device private data com múltiplos minors</h3>
+        <h3>Exercício 2 - Device private data com múltiplos minors</h3>
         <p>
           O segundo exercício é mais elaborado: estender o driver para suportar múltiplos minor numbers,
           cada um com seu próprio buffer de dados independente. A proposta é alocar os buffers sob demanda

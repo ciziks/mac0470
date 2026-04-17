@@ -54,7 +54,7 @@
 
       <section class="relato-section" id="introducao">
         <h2>1) Introdução</h2>
-        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/modules-intro/" target="_blank">FLUSP — Introduction to Linux kernel build configuration and modules</a></i></p>
+        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/modules-intro/" target="_blank">FLUSP - Introduction to Linux kernel build configuration and modules</a></i></p>
         <p>
           Este tutorial cobre o ciclo completo de desenvolvimento de um módulo do kernel Linux:
           criação do código-fonte, integração com o sistema de configuração (KConfig) e o sistema
@@ -158,7 +158,7 @@
         <figure>
           <img src="../images/report-03/3-kw-build.png"
             alt="Saída do kw build mostrando compilação concluída" />
-          <figcaption>Compilação concluída — o <code>kw build</code> levou aproximadamente 7 minutos</figcaption>
+          <figcaption>Compilação concluída - o <code>kw build</code> levou aproximadamente 7 minutos</figcaption>
         </figure>
 
         <h3>Deploy dos módulos na VM</h3>
@@ -234,7 +234,7 @@ sudo guestmount --rw --add "${VM_DIR}/arm64_img.qcow2" \
         <figure>
           <img src="../images/report-03/4-lsmod.png"
             alt="Saída do lsmod sem o simple_mod listado" />
-          <figcaption><code>lsmod</code> — <code>simple_mod</code> ausente antes do carregamento</figcaption>
+          <figcaption><code>lsmod</code> - <code>simple_mod</code> ausente antes do carregamento</figcaption>
         </figure>
 
         <h3>Carregando com insmod</h3>
@@ -249,7 +249,7 @@ sudo guestmount --rw --add "${VM_DIR}/arm64_img.qcow2" \
         <figure>
           <img src="../images/report-03/5-kernel-logs.png"
             alt="dmesg mostrando a mensagem de init do simple_mod" />
-          <figcaption><code>dmesg | tail</code> — mensagem de <code>Hello world</code> do módulo registrada no log</figcaption>
+          <figcaption><code>dmesg | tail</code> - mensagem de <code>Hello world</code> do módulo registrada no log</figcaption>
         </figure>
 
         <h3>Descarregando e usando modprobe</h3>
@@ -258,7 +258,7 @@ sudo guestmount --rw --add "${VM_DIR}/arm64_img.qcow2" \
         <figure>
           <img src="../images/report-03/4-remove-module-logs.png"
             alt="dmesg mostrando a mensagem de exit do simple_mod após rmmod" />
-          <figcaption><code>dmesg | tail</code> — mensagem de <code>Goodbye world</code> registrada após <code>rmmod</code></figcaption>
+          <figcaption><code>dmesg | tail</code> - mensagem de <code>Goodbye world</code> registrada após <code>rmmod</code></figcaption>
         </figure>
 
         <p>
@@ -315,14 +315,14 @@ dmesg | tail</code></pre>
         <figure>
           <img src="../images/report-03/5-log-simple-mod-part.png"
             alt="Logs do simple_mod_part após carregamento na VM" />
-          <figcaption>Logs do <code>simple_mod_part</code> após carregamento — dependência entre módulos funcionando</figcaption>
+          <figcaption>Logs do <code>simple_mod_part</code> após carregamento - dependência entre módulos funcionando</figcaption>
         </figure>
       </section>
 
       <section class="relato-section" id="exercicios">
         <h2>7) Exercícios</h2>
 
-        <h3>Exercício 1 — allmodconfig vs localmodconfig</h3>
+        <h3>Exercício 1 - allmodconfig vs localmodconfig</h3>
         <p>
           O primeiro exercício propõe comparar o resultado de <code>make allmodconfig</code>
           (habilita todos os módulos possíveis) com <code>make localmodconfig</code> (mantém
@@ -345,10 +345,10 @@ kw ssh --get '~/vm_mod_list'</code></pre>
         <figure>
           <img src="../images/report-03/5-new-vm-mod-list.png"
             alt="Lista de módulos da VM após make allmodconfig" />
-          <figcaption>Lista de módulos gerada com <code>localmodconfig</code> — redução expressiva de módulos</figcaption>
+          <figcaption>Lista de módulos gerada com <code>localmodconfig</code> - redução expressiva de módulos</figcaption>
         </figure>
 
-        <h3>Exercício 2 — Habilitando IKCONFIG</h3>
+        <h3>Exercício 2 - Habilitando IKCONFIG</h3>
         <p>
           O segundo exercício propõe habilitar a opção <code>CONFIG_IKCONFIG</code> e
           <code>CONFIG_IKCONFIG_PROC</code> para disponibilizar o <code>.config</code> de dentro
@@ -376,10 +376,10 @@ kw ssh</code></pre>
         <figure>
           <img src="../images/report-03/exercise-2.png"
             alt="/proc/config.xz disponível na VM após habilitar IKCONFIG" />
-          <figcaption><code>/proc/config.xz</code> presente na VM — configuração do kernel acessível de dentro da VM</figcaption>
+          <figcaption><code>/proc/config.xz</code> presente na VM - configuração do kernel acessível de dentro da VM</figcaption>
         </figure>
 
-        <h3>Exercício 3 — KBUILD_MODNAME como prefixo de log</h3>
+        <h3>Exercício 3 - KBUILD_MODNAME como prefixo de log</h3>
         <p>
           O terceiro exercício propõe adicionar a macro <code>pr_fmt</code> para prefixar
           automaticamente todas as mensagens de log com o nome do módulo:
@@ -402,7 +402,7 @@ kw ssh</code></pre>
 
         <p>
           Tentei recompilar o <code>simple_mod_part.c</code> da mesma forma, mas nenhuma das
-          tentativas — nem <code>kw build</code> nem <code>modules_prepare</code> — gerou o
+          tentativas - nem <code>kw build</code> nem <code>modules_prepare</code> - gerou o
           <code>.ko</code> correspondente para reenviar à VM.
         </p>
 

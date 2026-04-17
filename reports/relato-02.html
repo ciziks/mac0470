@@ -55,7 +55,7 @@
 
       <section class="relato-section" id="introducao">
         <h2>1) Introdução</h2>
-        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/build-linux-for-arm-kw/ target="_blank">FLUSP — Building and booting a custom Linux kernel for ARM using kw</a></i></p>
+        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/build-linux-for-arm-kw/ target="_blank">FLUSP - Building and booting a custom Linux kernel for ARM using kw</a></i></p>
         <p>
           O objetivo deste relato é documentar minha experiência seguindo o tutorial de compilação e
           deploy do kernel Linux para ARM64 utilizando o <code>kworkflow</code> (<code>kw</code>),
@@ -164,7 +164,7 @@ make ARCH=arm64 olddefconfig</code></pre>
           <figcaption><code>make defconfig</code> e <code>make olddefconfig</code> gerando o <code>.config</code> base</figcaption>
         </figure>
 
-        <h3>Troubleshooting — rsync não encontrado</h3>
+        <h3>Troubleshooting - rsync não encontrado</h3>
         <p>
           Ao tentar copiar a lista de módulos da VM para o IIO com <code>kw ssh --get</code>,
           o comando falhou com um erro no <code>rsync</code>:
@@ -173,7 +173,7 @@ make ARCH=arm64 olddefconfig</code></pre>
         <figure>
           <img src="../images/report-02/4-error-rsync.png"
             alt="Erro rsync: command not found ao tentar kw ssh --get" />
-          <figcaption>Erro ao copiar a lista de módulos — <code>rsync</code> ausente na VM</figcaption>
+          <figcaption>Erro ao copiar a lista de módulos - <code>rsync</code> ausente na VM</figcaption>
         </figure>
 
         <p>A solução foi instalar o <code>rsync</code> dentro da VM:</p>
@@ -238,7 +238,7 @@ exit</code></pre>
         <figure>
           <img src="../images/report-02/4-kw-menu-ciziks.png"
             alt="Local version definido como -CIZIKS no menu de configuração" />
-          <figcaption>Versão local definida como <code>-CIZIKS</code> — identificador personalizado do kernel</figcaption>
+          <figcaption>Versão local definida como <code>-CIZIKS</code> - identificador personalizado do kernel</figcaption>
         </figure>
 
         <p>Para confirmar as informações do kernel antes de compilar:</p>
@@ -248,7 +248,7 @@ exit</code></pre>
         <figure>
           <img src="../images/report-02/4-kw-build-info.png"
             alt="kw build --info mostrando nome e versão do kernel a ser compilado" />
-          <figcaption><code>kw build --info</code> — kernel <code>6.16.0-rc1</code> com 10 módulos a compilar</figcaption>
+          <figcaption><code>kw build --info</code> - kernel <code>6.16.0-rc1</code> com 10 módulos a compilar</figcaption>
         </figure>
       </section>
 
@@ -273,7 +273,7 @@ kw config build.kernel_img_name 'Image.gz'</code></pre>
         <figure>
           <img src="../images/report-02/5-kw-build-show.png"
             alt="kw config --show build exibindo as configurações de compilação" />
-          <figcaption><code>kw config --show build</code> — configurações para compilação cruzada ARM64</figcaption>
+          <figcaption><code>kw config --show build</code> - configurações para compilação cruzada ARM64</figcaption>
         </figure>
 
         <p>Com tudo configurado, executei a compilação:</p>
@@ -300,10 +300,10 @@ kw config build.kernel_img_name 'Image.gz'</code></pre>
         <figure>
           <img src="../images/report-02/6-error-deploy.png"
             alt="Erro no kw deploy --modules com install_modules: command not found" />
-          <figcaption>Erro no deploy — <code>install_modules: command not found</code> na VM</figcaption>
+          <figcaption>Erro no deploy - <code>install_modules: command not found</code> na VM</figcaption>
         </figure>
 
-        <h3>Troubleshooting — <code>kw deploy --setup</code></h3>
+        <h3>Troubleshooting - <code>kw deploy --setup</code></h3>
         <p>
           Por sugestão do monitor, tentei rodar <code>kw deploy --setup</code> primeiro, que envia
           os arquivos necessários e instala os pacotes para que o deploy funcione. Porém, o erro
@@ -316,7 +316,7 @@ kw config build.kernel_img_name 'Image.gz'</code></pre>
           <figcaption><code>kw deploy --setup</code> executado, mas o erro continuou na tentativa seguinte</figcaption>
         </figure>
 
-        <h3>Resolução — Apontando o kernel compilado no activate.sh</h3>
+        <h3>Resolução - Apontando o kernel compilado no activate.sh</h3>
         <p>
           Após múltiplas tentativas de refazer os passos do tutorial, sem sucesso, o monitor David me sugeriu testar senão era uma falha visual do boot, mas que a VM poderia estar funcionando normalmente.
           Assim, decidi avançar no tutorial e

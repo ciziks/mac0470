@@ -55,7 +55,7 @@
 
       <section class="relato-section" id="introducao">
         <h2>1) Introdução</h2>
-        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/qemu-libvirt-setup/" target="_blank">FLUSP — QEMU and
+        <p><i>Referência: <a href="https://flusp.ime.usp.br/kernel/qemu-libvirt-setup/" target="_blank">FLUSP - QEMU and
               libvirt setup for Linux kernel development</a></i></p>
 
         <p>
@@ -161,7 +161,7 @@ mv "${VM_DIR}/debian-12-nocloud-arm64-daily-20260227-2401.qcow2" \
 
         <figure>
           <img src="../images/report-01/check-rootfs.png" alt="Saída do comando para verificar partições da imagem" />
-          <figcaption>Identificando a partição rootfs — neste caso, <code>/dev/sda</code></figcaption>
+          <figcaption>Identificando a partição rootfs - neste caso, <code>/dev/sda</code></figcaption>
         </figure>
 
         <h3>Expandindo a Imagem</h3>
@@ -318,7 +318,7 @@ sudo apt install openssh-server</code></pre>
 
         <p>Após salvar, reiniciei a VM para aplicar as configurações.</p>
 
-        <h3>Troubleshooting — Problema de MTU</h3>
+        <h3>Troubleshooting - Problema de MTU</h3>
         <p>
           No dia seguinte, ao tentar conectar novamente, me deparei com um erro de MTU na rede da VM. A causa foi que
           a rede virtual interna do <code>libvirt</code> não havia sido iniciada. Para corrigir e evitar que eu esquecesse novamente
@@ -351,7 +351,7 @@ cat /tmp/bar</code></pre>
 
         <figure>
           <img src="../images/report-01/result-scp.png" alt="Resultado do scp e cat /tmp/bar no host" />
-          <figcaption>Transferência via <code>scp</code> funcionando — conteúdo do arquivo recebido no host</figcaption>
+          <figcaption>Transferência via <code>scp</code> funcionando - conteúdo do arquivo recebido no host</figcaption>
         </figure>
 
       </section>
@@ -360,7 +360,7 @@ cat /tmp/bar</code></pre>
         <h2>5) Verificando Módulos do Kernel</h2>
 
         <p>
-          Para este passo, é necessário estar conectado à VM — seja via console direto
+          Para este passo, é necessário estar conectado à VM - seja via console direto
           (<code>sudo virsh start --console arm64</code>) ou via SSH (<code>ssh root@&lt;ip-da-vm&gt;</code>).
           Com a sessão aberta, listei os módulos carregados e os salvei em um arquivo para referência no próximo tutorial:
         </p>
@@ -405,7 +405,7 @@ mkdir shared_arm64</code></pre>
   &lt;access mode='shared'/&gt;
 &lt;/memoryBacking&gt;</code></pre>
 
-        <h3>Troubleshooting — virtiofsd não encontrado</h3>
+        <h3>Troubleshooting - virtiofsd não encontrado</h3>
         <p>
           Ao tentar iniciar a VM com a nova configuração, recebi um erro:
         </p>
@@ -422,7 +422,7 @@ mkdir shared_arm64</code></pre>
         <figure>
           <img src="../images/report-01/virtiofsd-missing.png"
             alt="Mensagem indicando que virtiofsd não foi encontrado" />
-          <figcaption>Detalhe do erro — <code>virtiofsd</code> ausente no host</figcaption>
+          <figcaption>Detalhe do erro - <code>virtiofsd</code> ausente no host</figcaption>
         </figure>
 
         <p>A solução foi simples:</p>
@@ -443,7 +443,7 @@ nano test.txt  # "Hello World! Shared directory is working!"</code></pre>
 
         <figure>
           <img src="../images/report-01/mount-worked.png" alt="Compartilhamento virtiofs funcionando entre host e VM" />
-          <figcaption>Arquivo <code>test.txt</code> criado no host visível dentro da VM — compartilhamento funcionando!
+          <figcaption>Arquivo <code>test.txt</code> criado no host visível dentro da VM - compartilhamento funcionando!
           </figcaption>
         </figure>
 
