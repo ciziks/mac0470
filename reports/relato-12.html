@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC0470 - Relato 12</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <div class="top-nav">
+    <a href="../index.html">← Início</a>
+    <span class="site-name"><strong>@ciziks</strong> · MAC0470</span>
+  </div>
+
+  <div class="relato-hero">
+    <div class="tut-label">
+      <span class="tut-number">Relato 12</span>
+      <span class="tut-date">· 05/06/2026</span>
+      <span class="badge badge-done">Completo</span>
+    </div>
+    <h1>Implementando as Sugestões de Revisão do Rodrigo Siqueira no PR #1266</h1>
+    <p class="description">
+      Resolução de todos os comentários de revisão de Rodrigo Siqueira no
+      <a href="https://github.com/kworkflow/kworkflow/pull/1266" target="_blank">PR #1266</a>:
+      correções de estilo em <code>run_checkpatch_on_patches()</code>, tratamento do código de saída 2
+      do <code>checkpatch.pl</code>, reordenação da lógica de flags em <code>mail_send()</code>,
+      prompt interativo ao detectar falhas, incorporação do commit de documentação e melhorias
+      estruturais nos testes.
+    </p>
+    <div class="tags">
+      <span class="tag">kw</span>
+      <span class="tag">send-patch</span>
+      <span class="tag">checkpatch</span>
+      <span class="tag">code-review</span>
+      <span class="tag">docs</span>
+      <span class="tag">PR</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="doc-content">
+      <nav class="toc">
+        <h3>Sumário</h3>
+        <ol>
+          <li><a href="#contexto">1) Contexto</a></li>
+          <li><a href="#estilo">2) Estilo de Código em <code>run_checkpatch_on_patches()</code></a></li>
+          <li><a href="#exit-code-2">3) Tratamento do Código de Saída 2 do <code>checkpatch.pl</code></a></li>
+          <li><a href="#flags">4) Precedência de Flags em <code>mail_send()</code></a></li>
+          <li><a href="#prompt">5) Prompt Interativo quando o checkpatch Falha</a></li>
+          <li><a href="#docs">6) Documentação Incorporada ao Branch</a></li>
+          <li><a href="#teste">7) Comentário Explicativo no Teste</a></li>
+          <li><a href="#opcoes-longas">8) Correções de Estilo nos Testes</a></li>
+          <li><a href="#melhorias-testes">9) Melhorias nos Testes</a></li>
+          <li><a href="#resultado">10) Resultado Final</a></li>
+        </ol>
+      </nav>
+
+      <!-- ── 1) Contexto ── -->
+      <section class="relato-section" id="contexto">
+        <h2>1) Contexto</h2>
+        <p>
+          Após a reorganização dos PRs documentada no Relato 11, o
+          <a href="https://github.com/kworkflow/kworkflow/pull/1266" target="_blank">PR #1266</a>,
+          responsável pela integração do <code>checkpatch.pl</code> ao fluxo de <code>kw send-patch</code>,
+          recebeu uma rodada completa de revisão de Rodrigo Siqueira. Os comentários abrangiam
+          estilo de código, um caso de erro sem tratamento adequado, lógica de precedência de flags,
+          organização da documentação e diversas melhorias nos testes.
+        </p>
+        <p>
+          O objetivo desta sessão foi resolver todos esses pontos e garantir que o PR ficasse pronto
+          para uma nova rodada de revisão.
+        </p>
+      </section>
+
+      <!-- ── 2) Estilo de código ── -->
+      <section class="relato-section" id="estilo">
+        <h2>2) Estilo de Código em <code>run_checkpatch_on_patches()</code>
+          (<a href="https://github.com/kworkflow/kworkflow/commit/d89e3b8" target="_blank"><code>d89e3b8</code></a>)
+        </h2>
+        <p>
+          Rodrigo apontou três problemas de estilo dentro da função <code>run_checkpatch_on_patches()</code>,
+          todos relacionados ao <a href="https://kworkflow.org/content/codingstyle.html" target="_blank"><em>kw coding style</em></a>:
+        </p>
+
+        <h3>2.1) Captura do <code>basename</code> em variável</h3>
+        <p>
+          O nome do arquivo de patch estava sendo obtido diretamente via subshell inline ao longo do
+          código. A sugestão foi capturá-lo uma única vez em uma variável local, evitando chamadas
+          repetidas e tornando o código mais legível:
+        </p>
+        <pre data-lang="bash"><code>local patch_basename
+patch_basename=$(basename "$patch")</code></pre>
+
+        <h3>2.2) Declarações <code>local</code> movidas para o topo</h3>
+        <p>
+          O <a href="https://kworkflow.org/content/codingstyle.html" target="_blank">kw coding style</a>
+          exige que todas as declarações <code>local</code> fiquem agrupadas no
+          início da função, antes de qualquer lógica. As declarações que estavam espalhadas pelo corpo
+          da função foram consolidadas no topo.
+        </p>
+
+        <h3>2.3) Correções nas concatenações de strings</h3>
+        <p>
+          Algumas concatenações de strings usavam aspas desnecessárias ou formas que o estilo do
+          projeto não adota. As linhas foram reescritas seguindo o padrão já usado no restante do
+          arquivo.
+        </p>
+      </section>
+
+      <!-- ── 3) Exit code 2 ── -->
+      <section class="relato-section" id="exit-code-2">
+        <h2>3) Tratamento do Código de Saída 2 do <code>checkpatch.pl</code>
+          (<a href="https://github.com/kworkflow/kworkflow/commit/1d84d71" target="_blank"><code>1d84d71</code></a>)
+        </h2>
+        <p>
+          O <code>checkpatch.pl</code> retorna código de saída <strong>2</strong> quando é executado
+          fora da raiz de uma árvore do kernel. Antes dessa mudança, esse código de saída era
+          tratado da mesma forma que qualquer outro erro, tornando difícil distinguir a causa do
+          problema durante um debug.
+        </p>
+        <p>
+          A correção adicionou um ramo específico para o código 2, exibindo uma mensagem de erro
+          clara que orienta o usuário a executar o <code>kw send-patch</code> a partir da raiz do
+          repositório do kernel:
+        </p>
+        <pre data-lang="bash"><code>if [[ "$checkpatch_ret" == 2 ]]; then
+  complain 'checkpatch.pl could not find the kernel tree root.'
+  ret=1
+fi</code></pre>
+        <p>
+          Esse tratamento facilita o diagnóstico de um erro que, de outra forma, apareceria como
+          uma falha genérica do checkpatch sem indicação clara da causa.
+        </p>
+      </section>
+
+      <!-- ── 4) Precedência de flags ── -->
+      <section class="relato-section" id="flags">
+        <h2>4) Precedência de Flags em <code>mail_send()</code>
+          (<a href="https://github.com/kworkflow/kworkflow/commit/6ba056a" target="_blank"><code>6ba056a</code></a>)
+        </h2>
+        <p>
+          A função <code>mail_send()</code> verifica se o checkpatch deve ser executado antes do
+          envio, levando em conta tanto a flag de linha de comando (<code>--no-checkpatch</code>)
+          quanto a opção de configuração (<code>checkpatch_before_send</code> no arquivo de config).
+          A lógica original checava a configuração antes da flag, o que podia fazer com que a opção
+          de config sobrescrevesse o que o usuário havia pedido explicitamente na linha de comando.
+        </p>
+        <p>
+          A reordenação garantiu que a flag de linha de comando seja verificada primeiro:
+        </p>
+        <pre data-lang="bash"><code># Antes (config tinha precedência sobre flag)
+if [[ "$checkpatch_before_send" == 'yes' ]]; then
+  ...
+elif [[ -n "$no_checkpatch_flag" ]]; then
+  ...
+fi
+
+# Depois (flag de linha de comando tem precedência)
+if [[ -n "$no_checkpatch_flag" ]]; then
+  ...
+elif [[ "$checkpatch_before_send" == 'yes' ]]; then
+  ...
+fi</code></pre>
+        <p>
+          Com a nova ordem, <code>--no-checkpatch</code> sempre desabilita a validação,
+          independentemente do que estiver configurado no arquivo de configuração, comportamento
+          esperado para qualquer flag explícita de linha de comando.
+        </p>
+      </section>
+
+      <!-- ── 5) Prompt interativo ── -->
+      <section class="relato-section" id="prompt">
+        <h2>5) Prompt Interativo quando o checkpatch Falha
+          (<a href="https://github.com/kworkflow/kworkflow/commit/0cee945" target="_blank"><code>0cee945</code></a>)
+        </h2>
+        <p>
+          O Rodrigo levantou a questão que abortar o envio silenciosamente quando o checkpatch detecta
+          problemas é desnecessariamente restritivo. Há casos legítimos em que o desenvolvedor
+          viola alguma regra de estilo, como extrapolar o limite de colunas em
+          drivers <code>amdgpu</code> (exemplo do próprio Rodrigo), e ainda assim quer enviar o patch. Forçá-lo a usar
+          <code>--no-checkpatch</code> para isso é um atrito desnecessário.
+        </p>
+
+        <h3>5.1) Mudança em <code>mail_send()</code></h3>
+        <p>
+          O comportamento de abortar diretamente com <code>complain</code> + <code>return 1</code>
+          foi substituído por um prompt interativo usando <code>ask_yN</code>. O envio só é abortado
+          se o usuário responder "não", que é o padrão ao pressionar Enter:
+        </p>
+        <pre data-lang="bash"><code>run_checkpatch_on_patches "$kernel_root" "$flag"
+if [[ "$?" != 0 ]]; then
+  warning 'Patches failed checkpatch.'
+  if [[ "$(ask_yN 'Do you wish to proceed with sending anyway?')" == 0 ]]; then
+    complain 'Aborting send.'
+    return 1
+  fi
+fi</code></pre>
+        <p>
+          Com essa mudança, um desenvolvedor que recebe um aviso do checkpatch mas sabe que o desvio
+          é intencional pode simplesmente responder "y" e continuar o fluxo normalmente, sem precisar
+          reconfigurar nada.
+        </p>
+
+        <h3>5.2) Atualização dos testes</h3>
+        <p>
+          O teste existente <em>"Should abort when checkpatch fails"</em> precisava ser atualizado:
+          com o novo fluxo interativo, rodar <code>mail_send</code> sem simular a entrada do usuário
+          faria o teste travar ou falhar por razões erradas. A solução foi passar a resposta via pipe:
+        </p>
+        <pre data-lang="bash"><code># Failing checkpatch: user declines to proceed, should abort
+parse_mail_options '--private' '@^'
+send_patch_config['checkpatch_before_send']='yes'
+printf 'n\n' | mail_send 'SILENT' &> /dev/null
+assert_equals_helper 'Should abort when checkpatch fails and user says no' "${LINENO}" 1 "$?"</code></pre>
+        <p>
+          Além disso, um novo caso de teste foi adicionado para cobrir o caminho oposto: checkpatch
+          falha, mas o usuário opta por continuar:
+        </p>
+        <pre data-lang="bash"><code># Failing checkpatch: user chooses to proceed anyway, send should go through
+parse_mail_options '--private' '@^'
+send_patch_config['checkpatch_before_send']='yes'
+output=$(printf 'y\n' | mail_send 'TEST_MODE' 2> /dev/null)
+assertTrue "(${LINENO}) Should proceed when checkpatch fails and user says yes" \
+  '[[ "${output}" =~ "git send-email" ]]'</code></pre>
+      </section>
+
+      <!-- ── 6) Documentação incorporada ── -->
+      <section class="relato-section" id="docs">
+        <h2>6) Documentação Incorporada ao Branch
+          (<a href="https://github.com/kworkflow/kworkflow/commit/708c2a6" target="_blank"><code>708c2a6</code></a>)
+        </h2>
+        <p>
+          O commit <code>doc: send-patch: document checkpatch integration and --no-checkpatch flag</code>
+          havia sido originalmente aberto no PR de documentação separado
+          (<a href="https://github.com/kworkflow/kworkflow/pull/1268" target="_blank">#1268</a>).
+          Rodrigo Siqueira sugeriu que a documentação fosse incorporada ao PR #1266, mantendo-a
+          junto ao código que ela descreve.
+        </p>
+        <p>
+          O commit foi trazido para o branch via <code>cherry-pick</code> e o PR de documentação
+          ficou sem esse commit, reduzindo seu escopo ao texto de help curto. Essa reorganização
+          segue o princípio de que documentação e código que andam juntos devem ser revisados juntos.
+        </p>
+        <pre data-lang="bash"><code>git cherry-pick 708c2a6</code></pre>
+      </section>
+
+      <!-- ── 7) Comentário no teste ── -->
+      <section class="relato-section" id="teste">
+        <h2>7) Comentário Explicativo no Teste
+          (<a href="https://github.com/kworkflow/kworkflow/pull/1265" target="_blank">PR #1265</a>)
+        </h2>
+        <p>
+          No teste unitário em <code>test_mail_parser()</code>, a variável <code>COMMIT_RANGE</code>
+          era definida com o valor <code>'-8 '</code>, com um espaço ao final. Rodrigo Siqueira
+          perguntou se isso era intencional. Um leitor desavisado poderia facilmente interpretar como
+          um erro de digitação, então foi adicionado um comentário explicando a origem do espaço:
+        </p>
+        <pre data-lang="bash"><code># The trailing space in '-8 ' comes from send_patch.sh appending a space
+# after the commit count (options_values['COMMIT_RANGE']+="$commit_count ").
+# reposition_commit_count_arg injects '--' before '-8' when no '--' is
+# explicitly passed, which triggers that code path.
+assert_equals_helper 'Set version with commit count: COMMIT_RANGE' "$LINENO" '-8 ' "${options_values['COMMIT_RANGE']}"</code></pre>
+        <p>
+          O comentário evita que futuros mantenedores "corrijam" o espaço pensando ser um erro,
+          o que quebraria o teste silenciosamente. Apesar de relacionado ao PR
+          <a href="https://github.com/kworkflow/kworkflow/pull/1265" target="_blank">#1265</a>,
+          a sugestão veio durante a revisão conjunta das duas branches.
+        </p>
+      </section>
+
+      <!-- ── 8) Correções de estilo nos testes ── -->
+      <section class="relato-section" id="opcoes-longas">
+        <h2>8) Correções de Estilo nos Testes</h2>
+
+        <h3>8.1) Opções longas de comandos shell
+          (<a href="https://github.com/kworkflow/kworkflow/commit/d3b2d8a" target="_blank"><code>d3b2d8a</code></a>)
+        </h3>
+        <p>
+          O <a href="https://kworkflow.org/content/codingstyle.html" target="_blank">kw coding style</a>
+          exige o uso das formas longas das opções de comandos shell, por tornarem
+          o código mais legível sem depender de memorização de flags curtas. No arquivo de testes,
+          todas as ocorrências de opções curtas foram substituídas pelas equivalentes longas:
+        </p>
+        <pre data-lang="bash"><code># Antes
+mkdir -p "$dir"
+rm -rf "$dir"
+rm -f "$file"
+
+# Depois
+mkdir --parents "$dir"
+rm --recursive --force "$dir"
+rm --force "$file"</code></pre>
+
+        <h3>8.2) Codestyle em <code>test_run_checkpatch_on_patches()</code>
+          (<a href="https://github.com/kworkflow/kworkflow/commit/fbbbbce" target="_blank"><code>fbbbbce</code></a>)
+        </h3>
+        <p>
+          Três ajustes de estilo adicionais foram aplicados nesta função de teste após revisão:
+        </p>
+        <ul>
+          <li>
+            <strong>Declarações <code>local</code> movidas para o topo</strong>: as variáveis
+            <code>fake_patch2</code> e <code>expected_checkpatch</code> estavam declaradas no meio
+            da função e foram movidas para o bloco de declarações no início, seguindo o mesmo padrão
+            exigido no código de produção;
+          </li>
+          <li>
+            <strong>Asserção multilinha convertida para linha única</strong>: uma string de asserção
+            que usava múltiplas linhas foi reescrita em linha única com <code>$'\n'</code>, tornando
+            a intenção mais explícita e o código mais fácil de ler;
+          </li>
+          <li>
+            <strong>Sintaxe <code>${var}</code> nas concatenações</strong>: as variáveis
+            <code>$LINENO</code> e <code>$output</code> foram corrigidas para <code>${LINENO}</code>
+            e <code>${output}</code>, conforme a
+            <a href="https://kworkflow.org/content/codingstyle.html#string-concatenation" target="_blank">regra de concatenação de strings do projeto</a>.
+          </li>
+        </ul>
+      </section>
+
+      <!-- ── 9) Melhorias nos testes ── -->
+      <section class="relato-section" id="melhorias-testes">
+        <h2>9) Melhorias nos Testes
+          (<a href="https://github.com/kworkflow/kworkflow/commit/acc5a51" target="_blank"><code>acc5a51</code></a>)
+        </h2>
+        <p>
+          Rodrigo Siqueira sugeriu uma série de melhorias estruturais nos testes de
+          <code>run_checkpatch_on_patches()</code>, todas aplicadas em um único commit.
+        </p>
+
+        <h3>9.1) Scripts de sample estáticos para o checkpatch</h3>
+        <p>
+          A criação dinâmica de scripts Perl dentro dos testes (via <code>printf</code>) foi
+          substituída por arquivos estáticos em <code>tests/unit/samples/scripts/</code>, seguindo
+          a convenção do projeto para fixtures de teste:
+        </p>
+        <pre data-lang="bash"><code># Antes: criação dinâmica inline
+printf '#!/usr/bin/perl\nexit 0;\n' > "$fake_checkpatch"
+printf '#!/usr/bin/perl\nexit 1;\n' > "$fake_checkpatch"
+
+# Depois: cópia de arquivos de sample
+cp "${SAMPLES_DIR}/scripts/checkpatch_pass.pl" "$fake_checkpatch"
+cp "${SAMPLES_DIR}/scripts/checkpatch_fail.pl" "$fake_checkpatch"</code></pre>
+
+        <h3>9.2) Isolamento do patch cache por teste</h3>
+        <p>
+          O <code>patch_cache</code> apontava para <code>${KW_CACHE_DIR}/patches</code>, um
+          diretório compartilhado entre todos os testes. Se um teste deixasse arquivos para trás,
+          os seguintes podiam ser afetados. Agora cada função de teste cria seu próprio diretório
+          temporário sob <code>SHUNIT_TMPDIR</code> e salva/restaura <code>KW_CACHE_DIR</code>:
+        </p>
+        <pre data-lang="bash"><code>local original_cache_dir="$KW_CACHE_DIR"
+local test_cache_dir="${SHUNIT_TMPDIR}/checkpatch_test_cache"
+local patch_cache="${test_cache_dir}/patches"
+
+export KW_CACHE_DIR="$test_cache_dir"
+mkdir --parents "$patch_cache"
+# ... execução do teste ...
+rm --recursive --force "$test_cache_dir"
+export KW_CACHE_DIR="$original_cache_dir"</code></pre>
+
+        <h3>9.3) Limpeza do <code>fake_checkpatch</code> movida para <code>tearDown()</code></h3>
+        <p>
+          Os <code>rm --force "$fake_checkpatch"</code> espalhados ao final de cada teste foram
+          removidos. A limpeza foi centralizada em <code>tearDown()</code>, que é chamada pelo
+          shunit2 após cada teste, inclusive em caso de falha, o que antes podia deixar o arquivo
+          de script falso vazar entre testes:
+        </p>
+        <pre data-lang="bash"><code>function tearDown()
+{
+  unset options_values
+  unset set_confs
+  rm --force "${FAKE_KERNEL}/scripts/checkpatch.pl"
+}</code></pre>
+
+        <h3>9.4) Divisão em funções focadas</h3>
+        <p>
+          A função monolítica <code>test_run_checkpatch_on_patches()</code>, que cobria cinco
+          cenários diferentes, foi dividida em cinco funções independentes. Com isso, quando um
+          cenário falha, o nome da função identifica imediatamente o problema sem precisar inspecionar
+          o output completo:
+        </p>
+        <pre data-lang="bash"><code>test_run_checkpatch_on_patches_missing_script    # sem checkpatch.pl presente
+test_run_checkpatch_on_patches_empty_cache       # sem patches no cache
+test_run_checkpatch_on_patches_passing           # patch que passa no checkpatch
+test_run_checkpatch_on_patches_failing           # patch que falha no checkpatch
+test_run_checkpatch_on_patches_multiple_failing  # múltiplos patches falhando</code></pre>
+        <p>
+          Os testes passaram de 22 para 26, todos passando corretamente.
+        </p>
+      </section>
+
+      <!-- ── 10) Resultado ── -->
+      <section class="relato-section" id="resultado">
+        <h2>10) Resultado Final</h2>
+        <p>
+          Todos os comentários de revisão de Rodrigo Siqueira foram endereçados:
+        </p>
+        <ul>
+          <li>
+            <strong>Estilo de código</strong> (<a href="https://github.com/kworkflow/kworkflow/commit/d89e3b8" target="_blank"><code>d89e3b8</code></a>):
+            <code>run_checkpatch_on_patches()</code> segue agora integralmente o
+            <a href="https://kworkflow.org/content/codingstyle.html" target="_blank">kw coding style</a>,
+            com <code>local</code>s no topo, <code>basename</code> em variável e concatenações de
+            strings no padrão do projeto;
+          </li>
+          <li>
+            <strong>Saída 2 do checkpatch</strong> (<a href="https://github.com/kworkflow/kworkflow/commit/1d84d71" target="_blank"><code>1d84d71</code></a>):
+            erro com mensagem clara quando o script é executado fora da raiz de uma árvore do kernel,
+            facilitando o debug;
+          </li>
+          <li>
+            <strong>Precedência de flags</strong> (<a href="https://github.com/kworkflow/kworkflow/commit/6ba056a" target="_blank"><code>6ba056a</code></a>):
+            <code>--no-checkpatch</code> tem precedência correta sobre a opção de configuração em
+            <code>mail_send()</code>;
+          </li>
+          <li>
+            <strong>Prompt interativo</strong> (<a href="https://github.com/kworkflow/kworkflow/commit/0cee945" target="_blank"><code>0cee945</code></a>):
+            em vez de abortar silenciosamente, <code>mail_send()</code> agora pergunta ao desenvolvedor
+            se deseja prosseguir quando o checkpatch falha; testes atualizados com pipe de entrada;
+          </li>
+          <li>
+            <strong>Documentação</strong> (<a href="https://github.com/kworkflow/kworkflow/commit/708c2a6" target="_blank"><code>708c2a6</code></a>):
+            commit de documentação incorporado ao branch #1266, mantendo código e docs no mesmo PR;
+          </li>
+          <li>
+            <strong>Comentário no teste</strong> (<a href="https://github.com/kworkflow/kworkflow/pull/1265" target="_blank">PR #1265</a>):
+            espaço intencional em <code>COMMIT_RANGE='-8 '</code> documentado em
+            <code>test_mail_parser()</code> para evitar confusão futura;
+          </li>
+          <li>
+            <strong>Estilo nos testes</strong> (<a href="https://github.com/kworkflow/kworkflow/commit/d3b2d8a" target="_blank"><code>d3b2d8a</code></a>,
+            <a href="https://github.com/kworkflow/kworkflow/commit/fbbbbce" target="_blank"><code>fbbbbce</code></a>):
+            opções curtas de shell substituídas pelas formas longas; declarações <code>local</code>
+            movidas para o topo, asserção multilinha convertida com <code>$'\n'</code> e sintaxe
+            <code>${var}</code> adotada nas concatenações;
+          </li>
+          <li>
+            <strong>Melhorias estruturais nos testes</strong> (<a href="https://github.com/kworkflow/kworkflow/commit/acc5a51" target="_blank"><code>acc5a51</code></a>):
+            scripts Perl de sample estáticos, isolamento do patch cache por teste, limpeza centralizada
+            em <code>tearDown()</code> e função monolítica dividida em cinco funções focadas, com o
+            conjunto de testes crescendo de 22 para 26.
+          </li>
+        </ul>
+        <p>
+          Com esses ajustes, o
+          <a href="https://github.com/kworkflow/kworkflow/pull/1266" target="_blank">PR #1266</a>
+          está pronto para uma nova rodada de revisão, com o diff mais limpo e todos os pontos
+          levantados pelo revisor resolvidos.
+        </p>
+      </section>
+
+    </div>
+
+    <hr class="nav-divider" />
+    <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
+      <a href="relato-11.html">← Reorganizando PRs, Rebase e Documentação</a>
+      <span></span>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      <a href="../index.html">← Voltar ao início</a>
+      &nbsp;·&nbsp; MAC0470 Desenvolvimento de Software Livre · IME-USP
+    </p>
+  </footer>
+  <script src="../js/copy-code.js"></script>
+</body>
+
+</html>
