@@ -116,16 +116,49 @@ git send-email [&lt;options&gt;] &lt;file|directory&gt;
         <p>
           Dentro da função <code>parse_mail_options</code>, era preciso inverter a ordem de
           concatenação, colocando o <code>PATCH_VERSION</code> antes de
-          <code>$pass_option_to_send_email</code>. Aproveitei também para remover o espaço explícito
-          entre eles (o loop já inseria o separador):
+          <code>$pass_option_to_send_email</code>:
         </p>
-        <pre data-lang="diff"><code># src/send_patch.sh — linha 1122
+        <pre data-lang="diff"><code># src/send_patch.sh - linha 1122
 -  options_values['PASS_OPTION_TO_SEND_EMAIL']="$(str_strip "$pass_option_to_send_email ${options_values['PATCH_VERSION']}")"
-+  options_values['PASS_OPTION_TO_SEND_EMAIL']="$(str_strip "${options_values['PATCH_VERSION']} $pass_option_to_send_email")"</code></pre>
++  options_values['PASS_OPTION_TO_SEND_EMAIL']="$(str_strip "${options_values['PATCH_VERSION']}$pass_option_to_send_email")"</code></pre>
         <p>
           Com essa mudança, independentemente da posição da flag <code>-v</code> na linha de comando
           do usuário, a versão sempre será colocada antes do commit range ao construir o comando
           <code>git send-email</code> internamente.
+        </p>
+
+        <h3>3.1) Por que o espaço explícito foi removido?</h3>
+        <p>
+          Durante a revisão do PR, o Rodrigo perguntou por que o espaço entre
+          <code>${options_values['PATCH_VERSION']}</code> e <code>$pass_option_to_send_email</code>
+          foi removido. A resposta está no loop que popula a variável
+          <code>pass_option_to_send_email</code>:
+        </p>
+        <pre data-lang="bash"><code># TODO: find a better way to handle spaces inside pass_option_to_send_email
+for i in "$@"; do
+  if [[ "${i}" =~ ' ' ]]; then
+    pass_option_to_send_email+=" ${i@Q}"
+  else
+    pass_option_to_send_email+=" ${i}"
+  fi
+done</code></pre>
+        <p>
+          Repare que o loop <strong>sempre prefixar um espaço</strong> a cada argumento ao
+          concatenar (<code>" ${i}"</code> ou <code>" ${i@Q}"</code>). Isso significa que, ao
+          final do loop, <code>pass_option_to_send_email</code> começa com um espaço, por exemplo,
+          <code> -8</code> para o commit range <code>-8</code>.
+        </p>
+        <p>
+          Portanto, ao construir a string final, <code>${options_values['PATCH_VERSION']}$pass_option_to_send_email</code>
+          já produz <code>-v3 -8</code> naturalmente, sem precisar inserir nenhum separador adicional.
+          Se mantivéssemos o espaço explícito, o resultado seria <code>-v3  -8</code> (espaço duplo),
+          o que não é desejado.
+        </p>
+        <p>
+          O comentário <code>TODO</code> no código deixa claro que essa convenção de prefixar o espaço
+          no loop é uma solução temporária para lidar com argumentos que contêm espaços internos
+          (esses recebem o tratamento <code>${i@Q}</code> para quotar corretamente). O espaço na
+          concatenação foi removido justamente para respeitar esse contrato implícito do loop.
         </p>
       </section>
 
@@ -302,7 +335,7 @@ git commit</code></pre>
     <hr class="nav-divider" />
     <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
       <a href="relato-08.html">← Início da Contribuição ao kworkflow</a>
-      <span></span>
+      <a href="relato-10.html">Validando Patches com checkpatch antes do Envio →</a>
     </div>
   </main>
 
