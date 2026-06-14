@@ -51,9 +51,9 @@
       <span class="dot" style="background: #8957e5"></span>
       Projeto Software Livre
     </button>
-    <button onclick="showSection('debian', this)">
-      <span class="dot" style="background: #d70a53"></span>
-      Debian
+    <button onclick="showSection('data', this)">
+      <span class="dot" style="background: #1a7f5a"></span>
+      Análise Dataset LKML5Ws
     </button>
   </nav>
 
@@ -449,21 +449,47 @@
       </div>
     </section>
 
-    <!-- ── Debian ── -->
-    <section id="debian" class="section">
+    <!-- ── Análise Dataset LKML5Ws ── -->
+    <section id="data" class="section">
       <div class="section-header">
-        <div class="section-icon" style="background: #2a0510">🌀</div>
+        <div class="section-icon" style="background: #0d2818">📊</div>
         <div>
-          <h2>Debian</h2>
-          <p>
-            Empacotamento, manutenção e contribuição para o projeto Debian
-          </p>
+          <h2>Análise Dataset LKML5Ws</h2>
+          <p>Análise do dataset LKML5Ws para diversidade de código no subsistema IIO</p>
         </div>
       </div>
-      <div class="placeholder-card">
-        <div class="icon">🚧</div>
-        <h3>Em breve</h3>
-        <p>O conteúdo desta seção será adicionado ao longo da disciplina.</p>
+
+      <div class="cards-list">
+        <!-- Relato 13 -->
+        <div class="card card-done">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">Relato 13</span>
+              <span class="card-date">· 14/06</span>
+            </div>
+            <span class="badge badge-done">Completo</span>
+          </div>
+          <h3>
+            <a href="reports/relato-13.html" class="card-title-link">13) Análise de Diversidade de Código no Subsistema IIO</a>
+          </h3>
+          <p>
+            Pipeline de enriquecimento sobre a mailing list IIO do dataset LKML5Ws: expansão de
+            git diffs com o corpo completo das funções via <code>git cat-file</code> na árvore
+            local do <code>jic23/iio</code>, EDA e definição de métricas de diversidade para a
+            tese de mestrado.
+          </p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">LKML5Ws</span>
+              <span class="tag">IIO</span>
+              <span class="tag">python</span>
+              <span class="tag">git</span>
+              <span class="tag">parquet</span>
+              <span class="tag">mestrado</span>
+            </div>
+            <a href="reports/relato-13.html" class="read-link">Ler relato →</a>
+          </div>
+        </div>
       </div>
     </section>
   </main>
