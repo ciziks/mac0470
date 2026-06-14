@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC5856 - Relato 14</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <div class="top-nav">
+    <a href="../index.html">← Início</a>
+    <span class="site-name"><strong>@ciziks</strong> · MAC5856</span>
+  </div>
+
+  <div class="relato-hero">
+    <div class="tut-label">
+      <span class="tut-number">Relato 14</span>
+      <span class="tut-date">· 18/06/2026</span>
+      <span class="badge badge-done">Completo</span>
+    </div>
+    <h1>Métricas de Diversidade de Código no Subsistema IIO</h1>
+    <p class="description">
+      Análise multidimensional de diversidade sobre 16.670 implementações únicas de funções IIO,
+      combinando diversidade léxica (TF-IDF), complexidade ciclomática, estrutura AST (tree-sitter)
+      e similaridade semântica (UniXcoder) — revelando um paradoxo central: alta diversidade
+      superficial e baixa convergência semântica.
+    </p>
+    <div class="tags">
+      <span class="tag">diversidade</span>
+      <span class="tag">TF-IDF</span>
+      <span class="tag">AST</span>
+      <span class="tag">UniXcoder</span>
+      <span class="tag">ciclomática</span>
+      <span class="tag">IIO</span>
+      <span class="tag">mestrado</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="doc-content">
+      <nav class="toc">
+        <h3>Sumário</h3>
+        <ol>
+          <li><a href="#limpeza">1) Dataset e Limpeza</a></li>
+          <li><a href="#operacoes">2) Operações IIO Identificadas</a></li>
+          <li><a href="#lexical">3) Diversidade Léxica (TF-IDF)</a></li>
+          <li><a href="#ciclomatica">4) Complexidade Ciclomática</a></li>
+          <li><a href="#ast">5) Métricas Estruturais (AST)</a></li>
+          <li><a href="#semantica">6) Similaridade Semântica (UniXcoder)</a></li>
+          <li><a href="#heatmap">7) Síntese — Heatmap de Diversidade</a></li>
+          <li><a href="#conclusao">8) Conclusão</a></li>
+        </ol>
+      </nav>
+
+      <!-- ── 1) Limpeza ── -->
+      <section class="relato-section" id="limpeza">
+        <h2>1) Dataset e Limpeza</h2>
+        <p>
+          O dataset enriquecido bruto contém <strong>235.683 registros</strong> extraídos de
+          41.706 patches da mailing list IIO. Para a análise de diversidade, foram aplicados
+          cinco filtros sequenciais:
+        </p>
+        <ol>
+          <li>
+            <strong>Fonte confiável</strong>: manter apenas registros com
+            <code>fetch_status ∈ {git_blob, new_file}</code>, garantindo que o corpo da função
+            reflita o estado real do arquivo pré-patch;
+          </li>
+          <li>
+            <strong>Deduplicação por revisão</strong>: para cada patch que passou por múltiplas
+            versões (v1, v2, v3…), manter apenas a revisão mais recente — a que melhor representa
+            a intenção final do autor;
+          </li>
+          <li>
+            <strong>Remoção de macros</strong>: excluir símbolos identificados como invocações
+            de macro (<code>IIO_DEVICE_ATTR</code>, <code>SIMPLE_DEV_PM_OPS</code> etc.),
+            capturados erroneamente pelo extrator de brace-counting como funções;
+          </li>
+          <li>
+            <strong>Escopo de caminho</strong>: restringir a <code>drivers/iio/</code>, excluindo
+            arquivos de staging, headers genéricos e subsistemas adjacentes;
+          </li>
+          <li>
+            <strong>Um corpo por (arquivo, função)</strong>: quando o mesmo par aparece em
+            múltiplos patches limpos, manter o mais recente.
+          </li>
+        </ol>
+        <p>
+          O resultado é um dataset de <strong>16.670 implementações únicas de funções</strong>
+          distribuídas por <strong>1.089 arquivos-fonte</strong> e <strong>842 autores</strong>.
+          Desse total, <strong>3.922 funções (23,5%)</strong> batem com uma assinatura conhecida
+          de operação IIO (<code>*_read_raw</code>, <code>*_probe</code> etc.) e formam o núcleo
+          da análise de similaridade agrupada por tipo de operação.
+        </p>
+      </section>
+
+      <!-- ── 2) Operações ── -->
+      <section class="relato-section" id="operacoes">
+        <h2>2) Operações IIO Identificadas</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/parte-3/iio-operations-count.png"
+               alt="Contagem de implementações por operação IIO"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Número de implementações únicas de cada operação do callback <code>iio_info</code>
+            encontradas no dataset limpo.
+          </figcaption>
+        </figure>
+        <p>
+          A distribuição é fortemente concentrada nas quatro operações centrais do subsistema:
+          <code>probe</code> (1.003), <code>read_raw</code> (762), <code>remove</code> (597) e
+          <code>write_raw</code> (449). Em conjunto, elas representam quase 75% de todas as
+          implementações mapeadas. As operações de power management (<code>suspend</code>,
+          <code>resume</code>, <code>runtime_*</code>) formam um segundo tier com 80–180
+          implementações cada. Operações de cauda longa como <code>hwfifo_set_watermark</code>
+          (7) e <code>read_channel_label</code> (3) têm amostras insuficientes para conclusões
+          estatísticas robustas — um ponto a considerar na interpretação das métricas por grupo.
+        </p>
+      </section>
+
+      <!-- ── 3) Léxica ── -->
+      <section class="relato-section" id="lexical">
+        <h2>3) Diversidade Léxica (TF-IDF)</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/parte-3/lexical-diversity.png"
+               alt="Diversidade léxica por operação IIO e bubble chart de similaridade"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Esquerda: score de diversidade léxica (1 − similaridade cosseno média no espaço TF-IDF)
+            por operação. Direita: dispersão média vs. máxima de similaridade; bolhas proporcionais
+            ao número de implementações.
+          </figcaption>
+        </figure>
+        <p>
+          Os scores de diversidade léxica são consistentemente altos em todas as operações,
+          variando de <strong>0,56 a 0,91</strong> (onde 1,0 = vocabulários completamente
+          distintos). <code>probe</code> é a operação mais lexicamente diversa (0,913, n=1.003),
+          seguida por <code>suspend</code>/<code>resume</code> (~0,90) e <code>read_raw</code>
+          (0,898, n=762). A mais uniforme é <code>read_channel_label</code> (0,556), mas com
+          apenas 3 amostras esse resultado não é conclusivo.
+        </p>
+        <p>
+          O <strong>bubble chart</strong> à direita revela uma estrutura mais fina: a maioria
+          das operações concentra-se no canto superior esquerdo (similaridade média baixa,
+          similaridade máxima próxima de 1,0) — indicando que, embora o vocabulário médio seja
+          muito distinto entre pares, existem sempre ao menos duas implementações quase idênticas
+          em qualquer operação. As exceções notáveis são <code>write_event_value</code> e
+          <code>read_event_value</code>, que têm tanto a média quanto o máximo de similaridade
+          mais baixos, sendo as operações mais homogeneamente diversas no léxico.
+        </p>
+      </section>
+
+      <!-- ── 4) Ciclomática ── -->
+      <section class="relato-section" id="ciclomatica">
+        <h2>4) Complexidade Ciclomática</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/parte-3/cyclomatic.png"
+               alt="Distribuição e dispersão de complexidade ciclomática por operação IIO"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Esquerda: boxplots de complexidade ciclomática (CC) por operação. Direita: desvio
+            padrão de CC — proxy de variação intragrupo.
+          </figcaption>
+        </figure>
+        <p>
+          O contraste entre operações é marcante. <code>probe</code> (média CC = 8,2, max = 40)
+          e <code>read_raw</code> (média = 7,7, max = 64) têm distribuições de cauda muito longa
+          — o boxplot mostra IQR comprimido mas outliers extremos, evidenciando que a maioria
+          dos drivers implementa essas operações de forma relativamente simples, mas um subconjunto
+          tem inicializações e caminhos de leitura excepcionalmente complexos. Na outra ponta,
+          <code>remove</code> (média CC = 1,3), <code>runtime_suspend</code> (1,5) e
+          <code>suspend</code> (1,9) são <strong>quase sempre boilerplate</strong> — o boxplot
+          colapsa próximo a CC = 1 com pouquíssima variação.
+        </p>
+        <p>
+          O gráfico de <strong>desvio padrão</strong> (direita) é o mais revelador para análise
+          de diversidade: <code>read_label</code> e <code>probe</code> têm os maiores spreads
+          (~5–6,5), confirmando que são as operações com maior variação de complexidade lógica
+          entre drivers. <code>remove</code> e <code>hwfifo_set_watermark</code> têm desvios
+          mínimos — implementações estruturalmente uniformes onde a análise de diversidade tem
+          pouco a extrair. Há uma <strong>correlação moderada</strong> entre diversidade léxica
+          e spread de complexidade (r = 0,47): operações que variam mais em estrutura lógica
+          também tendem a variar mais em vocabulário, mas a relação não é determinística.
+        </p>
+      </section>
+
+      <!-- ── 5) AST ── -->
+      <section class="relato-section" id="ast">
+        <h2>5) Métricas Estruturais (AST via tree-sitter)</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/parte-3/AST.png"
+               alt="Complexidade estrutural por operação IIO: nós AST, profundidade de aninhamento e chamadas"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Três dimensões estruturais extraídas via tree-sitter: média de nós AST (azul),
+            profundidade máxima de aninhamento (verde) e chamadas de função (laranja).
+          </figcaption>
+        </figure>
+        <p>
+          A análise via tree-sitter adiciona uma terceira camada que a complexidade ciclomática
+          não captura. <code>probe</code> domina em <strong>tamanho de AST</strong> (437 nós em
+          média) e em <strong>chamadas de função</strong> (16,1 em média) — reflexo direto do
+          seu papel como orquestrador de inicialização: alocação de dispositivo IIO, registro
+          de canais, configuração de IRQ e setup de hardware acontecem todos dentro de um único
+          <code>probe()</code>.
+        </p>
+        <p>
+          Surpreendentemente, <code>read_raw</code> lidera em <strong>profundidade de
+          aninhamento</strong> (11,6 níveis), superando inclusive <code>probe</code>. Isso
+          reflete a necessidade de tratar múltiplos tipos de canal, caminhos de calibração e
+          estados de hardware — frequentemente via <code>switch</code> aninhado dentro de
+          <code>if</code> dentro de outro <code>switch</code>. Já <code>remove</code>
+          apresenta os menores valores em todas as três dimensões, reforçando sua natureza
+          de teardown sequencial e quase sem ramificações.
+        </p>
+        <p>
+          Em termos de <strong>diversidade estrutural</strong> (coeficiente de variação do
+          número de nós dentro de cada grupo), as operações de label (<code>read_label</code>,
+          CV = 1,22) e runtime PM (<code>runtime_resume/suspend</code>, CV ~0,73–0,81) são
+          as mais heterogêneas — implementadas de formas muito distintas entre drivers.
+          <code>hwfifo_set_watermark</code> (CV = 0,25) e <code>read_channel_label</code>
+          (CV = 0,34) são as mais estruturalmente uniformes.
+        </p>
+      </section>
+
+      <!-- ── 6) Semântica ── -->
+      <section class="relato-section" id="semantica">
+        <h2>6) Similaridade Semântica (UniXcoder)</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/parte-3/semantic-similarity.png"
+               alt="PCA dos embeddings UniXcoder para as quatro maiores operações IIO"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Projeção PCA dos embeddings UniXcoder para as quatro maiores operações. A
+            diversidade semântica (1 − similaridade cosseno média) está indicada em cada painel.
+          </figcaption>
+        </figure>
+        <p>
+          A análise semântica via embeddings UniXcoder revela o contraste mais importante do
+          estudo. Enquanto as métricas léxicas apontavam diversidade alta (0,89–0,91), os
+          scores semânticos são sistematicamente baixos:
+        </p>
+        <table style="width:100%; border-collapse: collapse; font-size: 0.9rem; margin: 1rem 0">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border)">
+              <th style="text-align:left; padding: 6px 10px">Operação</th>
+              <th style="text-align:center; padding: 6px 10px">n</th>
+              <th style="text-align:center; padding: 6px 10px">Diversidade Léxica</th>
+              <th style="text-align:center; padding: 6px 10px">Diversidade Semântica</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 10px"><code>read_raw</code></td>
+              <td style="padding: 6px 10px; text-align:center">762</td>
+              <td style="padding: 6px 10px; text-align:center">0,898</td>
+              <td style="padding: 6px 10px; text-align:center">0,237</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 10px"><code>probe</code></td>
+              <td style="padding: 6px 10px; text-align:center">1.003</td>
+              <td style="padding: 6px 10px; text-align:center">0,913</td>
+              <td style="padding: 6px 10px; text-align:center">0,260</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 10px"><code>write_raw</code></td>
+              <td style="padding: 6px 10px; text-align:center">449</td>
+              <td style="padding: 6px 10px; text-align:center">0,897</td>
+              <td style="padding: 6px 10px; text-align:center">0,303</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 10px"><code>remove</code></td>
+              <td style="padding: 6px 10px; text-align:center">597</td>
+              <td style="padding: 6px 10px; text-align:center">0,892</td>
+              <td style="padding: 6px 10px; text-align:center">0,338</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          A similaridade cosseno média no espaço de embeddings varia de 0,66 a 0,76 — os
+          autores convergem para soluções estruturalmente semelhantes mesmo usando vocabulários
+          completamente diferentes. Os <strong>plots PCA</strong> tornam isso visível: todas as
+          quatro operações formam nuvens sem subclusters claros, com os pontos distribuídos de
+          forma difusa mas concentrada — sem grupos distintos, sem separação.
+        </p>
+        <p>
+          <code>remove</code> é a operação semanticamente mais diversa (0,338), o que faz
+          sentido: a sequência de teardown varia substancialmente dependendo dos recursos
+          adquiridos no <code>probe</code>. <code>read_raw</code> é a menos diversa (0,237),
+          sugerindo que o caminho de leitura IIO está suficientemente estabelecido para que
+          a maioria dos drivers o implemente de forma conceitualmente idêntica, independentemente
+          do hardware.
+        </p>
+      </section>
+
+      <!-- ── 7) Heatmap ── -->
+      <section class="relato-section" id="heatmap">
+        <h2>7) Síntese — Heatmap de Diversidade</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/parte-3/diversity-heatmap.png"
+               alt="Heatmap de diversidade normalizada: operações IIO × tipo de métrica"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Diversidade normalizada por operação e por tipo de métrica. Verde = alta diversidade;
+            vermelho = baixa diversidade (implementações homogêneas).
+          </figcaption>
+        </figure>
+        <p>
+          O heatmap sintetiza os três eixos de análise numa única visualização e torna o
+          paradoxo central explícito. A linha <strong>Lexical</strong> é uniformemente verde
+          (0,89–0,91) — todas as quatro operações têm vocabulários altamente distintos entre
+          implementações. A linha <strong>Structural</strong> é intermediária (0,57–0,69),
+          com <code>write_raw</code> sendo a mais estruturalmente diversa. A linha
+          <strong>Semantic</strong> é uniformemente vermelha (0,24–0,34) — os embeddings
+          aprendidos pelo modelo de linguagem de código convergem mesmo onde o léxico diverge.
+        </p>
+        <p>
+          A leitura por coluna também é informativa: <code>probe</code> tem o maior gap
+          léxico–semântico (0,91 vs. 0,26), enquanto <code>remove</code> tem o menor gap
+          (0,89 vs. 0,34) — ou seja, funções de teardown são as que mais preservam diversidade
+          semântica real, provavelmente porque não há um padrão único consolidado para desfazer
+          recursos heterogêneos.
+        </p>
+      </section>
+
+      <!-- ── 8) Conclusão ── -->
+      <section class="relato-section" id="conclusao">
+        <h2>8) Conclusão</h2>
+        <p>
+          A evidência combinada das três camadas de métricas aponta para uma conclusão consistente:
+          implementações de drivers IIO exibem <strong>alta diversidade superficial e baixa
+          diversidade semântica</strong>. A interface bem definida do subsistema — os callbacks
+          do struct <code>iio_info</code> — age como um <em>mecanismo de convergência</em>:
+          restringe a estrutura lógica das implementações mesmo deixando os detalhes
+          hardware-específicos completamente livres ao autor do driver.
+        </p>
+        <p>
+          Isso tem implicações diretas para a tese:
+        </p>
+        <ul>
+          <li>
+            <strong>Para geração de código</strong>: um modelo treinado apenas em diversidade
+            léxica irá produzir variações superficiais (identificadores e constantes distintos)
+            sem necessariamente diversificar a estrutura de controle — que é onde a real
+            diversidade de solução reside;
+          </li>
+          <li>
+            <strong>Para o Gerador de Soluções</strong>: o sinal mais rico está nas operações
+            com alto spread de complexidade ciclomática e alta CV de AST (<code>probe</code>,
+            <code>read_raw</code>, <code>read_label</code>) — são as que oferecem mais exemplos
+            de abordagens genuinamente distintas para o mesmo problema;
+          </li>
+          <li>
+            <strong>Para avaliação de diversidade</strong>: métricas léxicas sozinhas são
+            enganosas. O heatmap demonstra que diversidade semântica deve ser usada como
+            métrica primária, com léxica e estrutural como complemento.
+          </li>
+        </ul>
+        <p>
+          As próximas etapas incluem aplicar algoritmos de clustering (HDBSCAN, UMAP + DBSCAN)
+          sobre os embeddings UniXcoder para identificar grupos de implementações semanticamente
+          similares, e correlacionar a versão do patch (<code>patch_version</code>) com a posição
+          no espaço semântico como proxy de qualidade.
+        </p>
+      </section>
+
+    </div>
+
+    <hr class="nav-divider" />
+    <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
+      <a href="relato-13.html">← Análise de Diversidade de Código no Subsistema IIO</a>
+      <span></span>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      <a href="../index.html">← Voltar ao início</a>
+      &nbsp;·&nbsp; MAC5856 Desenvolvimento de Software Livre · IME-USP
+    </p>
+  </footer>
+  <script src="../js/copy-code.js"></script>
+</body>
+
+</html>
