@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC5856 - Relato 17</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <div class="top-nav">
+    <a href="../index.html">← Início</a>
+    <span class="site-name"><strong>@ciziks</strong> · MAC5856</span>
+  </div>
+
+  <div class="relato-hero">
+    <div class="tut-label">
+      <span class="tut-number">Relato 17</span>
+      <span class="tut-date">· 24/06/2026</span>
+      <span class="badge badge-done">Completo</span>
+    </div>
+    <h1>Análise de Trajetória de Revisão no Espaço Semântico IIO</h1>
+    <p class="description">
+      Rastreamento de como implementações de funções IIO se movem no espaço de embeddings UniXcoder
+      ao longo de revisões de patch (v1 → v2 → … → vN): métricas de deslocamento, eficiência de
+      trajetória, transições de cluster e análise de atratores, revelando um espaço semântico
+      altamente estável onde 63,5% dos patches são resubmissões sem alteração de código.
+    </p>
+    <div class="tags">
+      <span class="tag">trajetória</span>
+      <span class="tag">revisão</span>
+      <span class="tag">UniXcoder</span>
+      <span class="tag">K-Means</span>
+      <span class="tag">UMAP</span>
+      <span class="tag">IIO</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="doc-content">
+      <nav class="toc">
+        <h3>Sumário</h3>
+        <ol>
+          <li><a href="#pipeline">1) Pipeline</a></li>
+          <li><a href="#overview">2) Visão Geral do Dataset de Trajetórias</a></li>
+          <li><a href="#kmeans">3) K-Means sobre Embeddings de Trajetória</a></li>
+          <li><a href="#displacement">4) Métricas de Deslocamento</a></li>
+          <li><a href="#paths">5) Trajetórias no Espaço Semântico</a></li>
+          <li><a href="#transitions">6) Transições de Cluster</a></li>
+          <li><a href="#by-op">7) Deslocamento por Operação e Subsistema</a></li>
+          <li><a href="#extremes">8) Funções Mais e Menos Alteradas</a></li>
+          <li><a href="#attractor">9) Análise de Atratores</a></li>
+          <li><a href="#conclusao">10) Conclusão</a></li>
+        </ol>
+      </nav>
+
+      <!-- ── 1) Pipeline ── -->
+      <section class="relato-section" id="pipeline">
+        <h2>1) Pipeline</h2>
+        <p>
+          O objetivo é rastrear como a implementação de uma mesma função IIO evolui semanticamente
+          ao longo das revisões de um patch, medindo deslocamento no espaço de embeddings
+          entre versões consecutivas.
+        </p>
+        <p>A identidade de uma trajetória é definida pela tupla:</p>
+        <pre style="background:#1e1e2e; color:#cdd6f4; border-radius:6px; padding:0.8rem 1rem; font-size:0.85rem; overflow-x:auto;">(author, normalized_subject, file_path, function_name)</pre>
+        <p>O pipeline executa cinco etapas sobre o <code>data/iio_enriched.parquet</code>:</p>
+        <ol>
+          <li><strong>Extração de trajetórias</strong>: agrupa a mesma função por versão de patch usando a chave acima; mantém apenas grupos com ≥ 2 versões distintas;</li>
+          <li><strong>Embeddings</strong>: UniXcoder 768D por snippet único, com cache em <code>data/traj_embeddings.npy</code> (5.337 snippets únicos);</li>
+          <li><strong>Projeção UMAP</strong>: 2D para visualização e 10D como entrada para o clustering;</li>
+          <li><strong>Métricas de trajetória</strong>: deslocamento total, comprimento do caminho, eficiência e taxa de alteração de código;</li>
+          <li><strong>Análise de cluster</strong>: K-Means no UMAP-10D; matriz de transição início → fim e análise de atratores.</li>
+        </ol>
+      </section>
+
+      <!-- ── 2) Overview ── -->
+      <section class="relato-section" id="overview">
+        <h2>2) Visão Geral do Dataset de Trajetórias</h2>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-17/trajectory-overview.png"
+               alt="Visão geral do dataset de trajetórias: distribuição de comprimento, por operação IIO e por subsistema"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            <strong>Esquerda:</strong> distribuição do número de versões por trajetória cai rapidamente,
+            com a maioria tendo apenas 2 ou 3 versões.
+            <strong>Centro:</strong> trajetórias por operação IIO: <code>probe</code> domina (~1.300),
+            seguido por <code>read_raw</code> (~650) e <code>write_raw</code> (~400).
+            <strong>Direita:</strong> trajetórias por subsistema: <code>adc</code> domina (~1.200),
+            seguido por <code>light</code> e <code>accel</code>.
+          </figcaption>
+        </figure>
+
+        <pre style="background:#1e1e2e; color:#cdd6f4; border-radius:6px; padding:0.8rem 1rem; font-size:0.85rem; overflow-x:auto;">Dataset filtrado (IIO-ops, drivers/iio/, fontes válidas):  16.341 rows
+Após deduplicação por (chave, versão):                     16.121 rows
+Trajetórias multi-versão:                                   3.655
+Linhas (função, versão) em trajetórias:                    12.327
+Snippets únicos a embeddar:                                 5.337</pre>
+
+        <p>
+          A distribuição de comprimento de trajetória revela que patches IIO raramente ultrapassam
+          3 ou 4 revisões, o ciclo de revisão do subsistema é curto. O pico em 2 versões (1.640
+          trajetórias) reflete patches que foram revisados uma única vez antes de serem aceitos
+          ou abandonados. Trajetórias com 10+ versões existem mas são raras, geralmente
+          associadas a patches de longa controvérsia ou a contribuidores novos que precisam de
+          muitas iterações para atender ao padrão de qualidade do maintainer.
+        </p>
+        <p>
+          A dominância de <code>probe</code> nas trajetórias é esperada: é a função mais
+          revisada de qualquer driver, pois concentra alocação de recursos, inicialização de
+          hardware e registro no core IIO, exatamente os pontos que os reviewers examinam com
+          mais atenção.
+        </p>
+      </section>
+
+      <!-- ── 3) K-Means ── -->
+      <section class="relato-section" id="kmeans">
+        <h2>3) K-Means sobre Embeddings de Trajetória</h2>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-17/silhouette.png"
+               alt="Silhouette score do K-Means vs k para os embeddings de trajetória"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Silhouette score do K-Means em função de k com pico claro em k=5 (score=0,745),
+            seguido de queda brusca até k=10 e leve recuperação.
+          </figcaption>
+        </figure>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-17/k-means-trajectory.png"
+               alt="K-Means k=5 sobre UMAP-10D dos embeddings de trajetória, visualizado em 2D"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            K-Means k=5 sobre o UMAP-10D, visualizado no espaço 2D. Cinco regiões distintas
+            emergem: C1 (n=2.175, maior, região esquerda), C3 (n=1.889, região direita),
+            C2 (n=1.040, região central-superior), C0 (n=175, ilha compacta, canto direito superior)
+            e C4 (n=58, cluster isolado de snippets muito distintos).
+          </figcaption>
+        </figure>
+        <p>
+          O silhouette score de 0,745 para k=5 é notavelmente alto, consideravelmente acima
+          dos valores observados na análise global do Relato 15, o que indica que o subconjunto
+          de snippets pertencentes a trajetórias multi-versão tem estrutura semântica mais nítida
+          do que o dataset completo. Uma hipótese é que funções revisadas múltiplas vezes tendem
+          a ser as mais elaboradas (probe, read_raw de protocolos complexos), que naturalmente
+          habitam regiões mais densas e separadas do espaço de embeddings.
+        </p>
+        <p>
+          O cluster C4 (n=58, isolado no canto inferior direito do mapa) merece atenção: sua
+          separação extrema do restante sugere snippets semanticamente muito distintos, candidatos
+          a implementações idiossincráticas ou experimentais.
+        </p>
+      </section>
+
+      <!-- ── 4) Métricas de Deslocamento ── -->
+      <section class="relato-section" id="displacement">
+        <h2>4) Métricas de Deslocamento</h2>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-17/trajectory-displacemente-metrics.png"
+               alt="Métricas de deslocamento de trajetória: distribuição, por contagem de versões e eficiência"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            <strong>Esquerda:</strong> distribuição do deslocamento total (L2, 768D): 2.322 trajetórias
+            têm deslocamento zero (código não mudou).
+            <strong>Centro:</strong> deslocamento por contagem de versões: mediana sobe de v2 para v4
+            e se estabiliza; outliers crescem com mais revisões.
+            <strong>Direita:</strong> eficiência de trajetória nas trajetórias com código alterado e
+            pico massivo em 1,0 indica revisões em linha reta no espaço semântico.
+          </figcaption>
+        </figure>
+
+        <pre style="background:#1e1e2e; color:#cdd6f4; border-radius:6px; padding:0.8rem 1rem; font-size:0.85rem; overflow-x:auto;">Trajetórias com código alterado:   1.333  (36,5%)
+Trajetórias sem alteração de código: 2.322  (63,5%)
+Deslocamento mediano (alteradas):    6,655  (L2, 768D)
+Eficiência mediana de trajetória:    1,0000</pre>
+
+        <p>
+          O dado mais surpreendente é que <strong>63,5% das trajetórias multi-versão não têm
+          nenhuma alteração de código</strong> entre versões. Isso não é um defeito do pipeline, mas sim
+          um comportamento real do desenvolvimento no kernel Linux: patches são frequentemente
+          resubmetidos como parte de uma série reorganizada, com o corpo do diff idêntico mas
+          o contexto da série (versão, dependências, changelogs) alterado. O dataset captura essa
+          resubmissão como uma nova versão da trajetória, com embedding idêntico ao anterior,
+          resultando em deslocamento zero.
+        </p>
+        <p>
+          Para as 1.333 trajetórias que de fato alteraram código, a <strong>eficiência mediana
+          é exatamente 1,0</strong>, o que significa que a função se move em linha reta no
+          espaço de embeddings entre a primeira e a última versão. Não há oscilações: a revisão
+          vai diretamente de um ponto a outro sem retroceder. Isso sugere que as revisões IIO
+          são geralmente cirúrgicas, o reviewer aponta um problema, o contribuidor corrige,
+          o embedding reflete a mudança diretamente.
+        </p>
+      </section>
+
+      <!-- ── 5) Trajetórias no espaço semântico ── -->
+      <section class="relato-section" id="paths">
+        <h2>5) Trajetórias no Espaço Semântico</h2>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-17/trajectory-paths-semantic-space.png"
+               alt="200 trajetórias de revisão amostradas no espaço UMAP, coloridas por operação IIO e contagem de versões"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            200 trajetórias amostradas (apenas as com código alterado).
+            <strong>Esquerda:</strong> coloridas por operação IIO, as setas mostram o movimento
+            de v1 para vN dentro do cluster de cada operação.
+            <strong>Direita:</strong> coloridas por contagem de versões, trajetórias mais longas
+            (vermelho, 7–8 versões) tendem a ter movimentos maiores ou mais complexos.
+          </figcaption>
+        </figure>
+        <p>
+          A visualização das setas confirma visualmente o que as métricas indicam: a grande
+          maioria dos movimentos é <em>local</em>, a função se desloca dentro da mesma região
+          densa do UMAP, sem cruzar para outra ilha. As poucas setas longas (visíveis como
+          trajetórias que cruzam regiões distantes no mapa) correspondem aos casos de maior
+          deslocamento total, onde uma revisão alterou substancialmente a estrutura da função.
+        </p>
+        <p>
+          A coloração por operação IIO (painel esquerdo) mostra que operações diferentes
+          habitam regiões distintas do UMAP mesmo no subconjunto de trajetórias, e que
+          as revisões preservam essa separação pois <code>probe</code> permanece em sua região,
+          <code>read_raw</code> na sua, etc.
+        </p>
+      </section>
+
+      <!-- ── 6) Transições de Cluster ── -->
+      <section class="relato-section" id="transitions">
+        <h2>6) Transições de Cluster</h2>
+        <p>
+          Para cada trajetória com código alterado, foram registrados o cluster K-Means da
+          primeira versão (v1) e da última versão (vN). A matriz de transição mostra qual
+          fração das trajetórias que começam em cada cluster termina em cada cluster.
+        </p>
+
+        <pre style="background:#1e1e2e; color:#cdd6f4; border-radius:6px; padding:0.8rem 1rem; font-size:0.85rem; overflow-x:auto;">Taxa de cross-cluster (todas as trajetórias):        0,3%
+Taxa de cross-cluster (apenas código alterado):      0,8%
+Taxa de cross-cluster (código não alterado):         0,0%
+Transições cross-cluster absolutas:                 11</pre>
+
+        <p>
+          A taxa de 0,3% de transições entre clusters é o resultado central desta análise:
+          <strong>o espaço semântico é extremamente estável sob revisão</strong>. Apenas 11
+          das 3.655 trajetórias cruzaram a fronteira de cluster entre a primeira e a última
+          versão. A matriz de transição é, portanto, essencialmente diagonal, em que cada cluster
+          retém quase todas as trajetórias que nele começam.
+        </p>
+        <p>
+          Isso tem uma implicação direta para a hipótese dos relatos anteriores: os clusters
+          K-Means capturam o <em>tipo estrutural</em> da função, não o seu estágio de maturidade.
+          Uma função <code>probe</code> de driver ADC que começa no cluster C1 permanece em C1
+          após a revisão, mesmo que o código mude consideravelmente. A identidade semântica
+          do cluster é robusta o suficiente para sobreviver a iterações de patch.
+        </p>
+        <p>
+          Os 11 casos cross-cluster são os candidatos mais interessantes para inspeção manual:
+          representam revisões que <em>mudaram o padrão arquitetural</em> da função, por exemplo,
+          uma migração de API ou uma refatoração que muda fundamentalmente como a função interage
+          com o core IIO.
+        </p>
+      </section>
+
+      <!-- ── 7) Deslocamento por Operação e Subsistema ── -->
+      <section class="relato-section" id="by-op">
+        <h2>7) Deslocamento por Operação e Subsistema</h2>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-17/displacemente-by-iio.png"
+               alt="Deslocamento de embedding por operação IIO e por subsistema (apenas trajetórias com código alterado)"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Boxplots de deslocamento total (L2, 768D) para trajetórias com código alterado.
+            <strong>Esquerda:</strong> por operação IIO.
+            <strong>Direita:</strong> por subsistema (top 10 por contagem de trajetórias).
+          </figcaption>
+        </figure>
+        <p>
+          Entre as operações, <code>read_event_value</code> e <code>debugfs_reg_access</code>
+          apresentam os maiores deslocamentos medianos, indicando que quando essas funções
+          são revisadas, a mudança semântica é substancial. Faz sentido: <code>debugfs_reg_access</code>
+          é uma função de diagnóstico cujo conteúdo varia amplamente entre drivers (endereços de
+          registrador, protocolos de leitura), e qualquer revisão que mude sua abordagem tem
+          grande impacto no embedding.
+        </p>
+        <p>
+          <code>probe</code> e <code>read_raw</code>, apesar de dominar em volume de trajetórias,
+          têm deslocamento mediano mais baixo, as revisões dessas funções tendem a ser
+          incrementais (correção de error handling, ajuste de nome de variável, adição de
+          um <code>dev_err</code>), sem mudar a estrutura geral da função.
+        </p>
+        <p>
+          Por subsistema, <code>pressure</code> e <code>chemical</code> lideram o deslocamento
+          mediano. Uma hipótese: sensores de pressão e químicos tendem a usar protocolos
+          I²C/SPI complexos com sequências de inicialização elaboradas, revisões nesse tipo
+          de driver são mais propensas a alterar fluxos de controle inteiros, não apenas
+          detalhes de surface.
+        </p>
+      </section>
+
+      <!-- ── 8) Funções Mais e Menos Alteradas ── -->
+      <section class="relato-section" id="extremes">
+        <h2>8) Funções Mais e Menos Alteradas</h2>
+
+        <h3>Maior deslocamento semântico</h3>
+        <pre style="background:#1e1e2e; color:#cdd6f4; border-radius:6px; padding:0.8rem 1rem; font-size:0.85rem; overflow-x:auto; white-space:pre;">function_name                    iio_op              n_versions  displacement  efficiency
+bno055_debugfs_reg_access        debugfs_reg_access   2           41,80        1,000
+al3320a_remove                   remove               6           33,08        0,959
+bh1745_read_event_config         read_event_config    4           31,64        0,878
+tsl2591_read_event_config        read_event_config    6           30,17        1,000
+ltrf216a_runtime_resume          runtime_resume       6           29,31        0,619
+hsc_spi_probe                    probe                3           27,65        1,000
+mt6370_adc_read_label            read_label           13          26,88        1,000</pre>
+
+        <p>
+          O caso de maior deslocamento absoluto, <code>bno055_debugfs_reg_access</code>
+          (displacement=41,8), é notável: apenas 2 versões, 1 alteração de código, e eficiência
+          1,0, o que significa que em uma única revisão a função saltou 41,8 unidades no
+          espaço 768D. Isso aponta para uma reescrita completa da lógica de acesso ao registrador,
+          não um ajuste incremental.
+        </p>
+        <p>
+          <code>ltrf216a_runtime_resume</code> é o único com eficiência abaixo de 0,7 (0,619),
+          indicando um caminho não-linear: a função oscilou entre estados semânticos ao longo das
+          6 versões antes de se estabilizar, possivelmente um caso de tentativa e erro durante
+          a revisão.
+        </p>
+
+        <h3>Trajetórias estáveis (sem alteração de código)</h3>
+        <pre style="background:#1e1e2e; color:#cdd6f4; border-radius:6px; padding:0.8rem 1rem; font-size:0.85rem; overflow-x:auto; white-space:pre;">function_name                    iio_op      n_versions  author
+adf41513_suspend                 suspend     13          Rodrigo Alencar via B4 Relay
+mxs_lradc_adc_read_raw           read_raw    13          Ksenija Stanojevic
+mxs_lradc_adc_remove             remove      13          Ksenija Stanojevic
+mxs_lradc_adc_write_raw          write_raw   13          Ksenija Stanojevic
+adi_axi_adc_probe                probe       12          Antoniu Miclaus
+mmc5633_read_avail               read_avail  10          Frank Li</pre>
+
+        <p>
+          As trajetórias estáveis com mais versões revelam outro fenômeno do desenvolvimento
+          do kernel: patches que ficam presos em ciclos longos de resubmissão sem alteração
+          de código. <code>mxs_lradc_adc_*</code> com 13 versões (todas da autora Ksenija
+          Stanojevic) provavelmente reflete um patch de driver que precisou ser rebaseado
+          repetidamente por conflitos de dependência na árvore IIO, sem que o código em si
+          precisasse mudar. O mesmo padrão aparece em <code>adf41513_suspend</code> (13
+          versões, Rodrigo Alencar via B4 Relay).
+        </p>
+      </section>
+
+      <!-- ── 9) Análise de Atratores ── -->
+      <section class="relato-section" id="attractor">
+        <h2>9) Análise de Atratores</h2>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-17/convergence-attractor.png"
+               alt="Análise de atratores: distribuição de clusters no início vs. fim das trajetórias"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            <strong>Esquerda:</strong> fração de trajetórias por cluster no início (v1) vs. no fim (vN) 
+            as barras são quase idênticas.
+            <strong>Direita:</strong> delta de atração por cluster (end_frac − start_frac) valores
+            muito próximos de zero, com C0 e C1 como leves atratores e C3 como leve repulsor.
+          </figcaption>
+        </figure>
+
+        <pre style="background:#1e1e2e; color:#cdd6f4; border-radius:6px; padding:0.8rem 1rem; font-size:0.85rem; overflow-x:auto;">Attractor scores (end_frac − start_frac):
+  C0:  start=0,036  end=0,038  delta=+0,0014
+  C1:  start=0,381  end=0,382  delta=+0,0008
+  C4:  start=0,012  end=0,012  delta=+0,0000
+  C2:  start=0,245  end=0,244  delta=−0,0005
+  C3:  start=0,320  end=0,318  delta=−0,0015</pre>
+
+        <p>
+          A análise de atratores pergunta: existe algum cluster que os patches "gravitam" após
+          revisão, um padrão semântico canônico para o qual os reviewers empurram o código?
+          A resposta para o subsistema IIO é <strong>não, ou não de forma mensurável</strong>.
+        </p>
+        <p>
+          Os deltas de atração são da ordem de 0,001, ruído estatístico dado que apenas 11
+          trajetórias cruzaram clusters. C0 e C1 têm deltas positivos (leves atratores), mas a
+          magnitude é insignificante: o cluster que recebe mais trajetórias, C1 (38,2% ao final
+          vs. 38,1% no início), ganha praticamente zero. C3 é o maior "repulsor", mas com
+          delta de apenas −0,0015.
+        </p>
+        <p>
+          Isso reforça a conclusão principal: a revisão de patches IIO não reposiciona funções
+          entre clusters. Cada cluster é estável por si mesmo, as funções que nele estão no
+          início do processo de revisão nele permanecem ao final. Não há um "cluster de destino"
+          que os maintainers empurram patches em direção.
+        </p>
+      </section>
+
+      <!-- ── 10) Conclusão ── -->
+      <section class="relato-section" id="conclusao">
+        <h2>10) Conclusão</h2>
+        <p>
+          A análise de trajetória sobre 3.655 grupos multi-versão do dataset IIO revela um
+          espaço semântico <strong>excepcionalmente estável sob revisão</strong>. Três achados
+          centrais estruturam essa conclusão:
+        </p>
+        <ol>
+          <li>
+            <strong>63,5% das trajetórias não têm alteração de código.</strong> A maioria das
+            resubmissões de patches é organizacional (rebase, reorganização de série), não
+            semântica. O embedding é idêntico entre versões e o deslocamento é zero.
+          </li>
+          <li>
+            <strong>Quando o código muda, a revisão é cirúrgica e direta.</strong>
+            Eficiência mediana de 1,0 significa que as funções se movem em linha reta no espaço
+            768D entre v1 e vN, sem oscilações. O deslocamento mediano de 6,66 (L2) é moderado,
+            consistente com mudanças estruturais localizadas.
+          </li>
+          <li>
+            <strong>Apenas 11 trajetórias (0,3%) cruzaram fronteiras de cluster.</strong>
+            Os clusters K-Means capturam a identidade semântica estável da função, não seu
+            estágio de revisão. A análise de atratores confirma: não existe nenhum cluster
+            que sirva de destino canônico para revisões, cada função permanece em sua região
+            semântica original ao longo de todo o ciclo de patches.
+          </li>
+        </ol>
+        <p>
+          Esses resultados têm implicação direta para a pesquisa de diversidade de código:
+          métricas calculadas sobre qualquer versão de uma função dentro de uma trajetória
+          são representativas das demais. A diversidade semântica do subsistema IIO não é
+          um artefato da versão escolhida para análise, é uma propriedade estável das
+          implementações.
+        </p>
+        <p>
+          Os 11 casos de transição cross-cluster são a exceção que confirma a regra: são
+          candidatos a refatorações arquiteturais reais, mudanças que reposicionaram uma
+          função num novo paradigma de implementação dentro do subsistema, e merecem
+          inspeção manual como casos de estudo de evolução de código.
+        </p>
+      </section>
+
+    </div>
+
+    <hr class="nav-divider" />
+    <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
+      <a href="relato-16.html">← Clustering em read_raw e write_raw</a>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      <a href="../index.html">← Voltar ao início</a>
+      &nbsp;·&nbsp; MAC5856 Desenvolvimento de Software Livre · IME-USP
+    </p>
+  </footer>
+  <script src="../js/copy-code.js"></script>
+</body>
+
+</html>

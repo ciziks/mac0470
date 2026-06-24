@@ -23,10 +23,10 @@
     </div>
     <h1>Análise de Diversidade de Código no Subsistema IIO do Kernel Linux</h1>
     <p class="description">
-      Construção de um pipeline de enriquecimento de dados sobre a mailing list IIO do dataset
+      Construção de um pipeline de enriquecimento de dados sobre a mailing list do IIO do dataset
       <strong>LKML5Ws</strong>, expandindo o contexto dos git diffs com o conteúdo real das funções
-      via <code>git cat-file</code> na árvore local do <code>jic23/iio</code>, como base para
-      análise de diversidade de código voltada à tese de mestrado.
+      via <code>git cat-file</code> na tree local do <code>jic23/iio</code>, como base para
+      análise de diversidade de código voltada à minha tese de mestrado.
     </p>
     <div class="tags">
       <span class="tag">LKML5Ws</span>
@@ -35,7 +35,6 @@
       <span class="tag">git</span>
       <span class="tag">parquet</span>
       <span class="tag">data-analysis</span>
-      <span class="tag">mestrado</span>
     </div>
   </div>
 
@@ -46,11 +45,11 @@
         <ol>
           <li><a href="#contexto">1) Contexto e Motivação</a></li>
           <li><a href="#dataset">2) O Dataset LKML5Ws e a Mailing List IIO</a></li>
-          <li><a href="#desafio-sha">3) Desafio 1 — Hashes Abreviados dos Blobs</a></li>
-          <li><a href="#desafio-patches">4) Desafio 2 — Patches Propostos, Não Mesclados</a></li>
+          <li><a href="#desafio-sha">3) Primeiro Desafio: Hashes Abreviados dos Blobs</a></li>
+          <li><a href="#desafio-patches">4) Segundo Desafio: Patches Propostos, Não Mesclados</a></li>
           <li><a href="#estrategia">5) Estratégia Escolhida: <code>git cat-file</code> na Árvore Local</a></li>
           <li><a href="#extracao">6) Extração de Funções em C</a></li>
-          <li><a href="#pipeline">7) Pipeline Completo e Schema de Saída</a></li>
+          <li><a href="#pipeline">7) Pipeline de Enriquecimento</a></li>
           <li><a href="#eda">8) Análise Exploratória de Dados</a></li>
           <li><a href="#proximos">9) Próximos Passos</a></li>
         </ol>
@@ -60,15 +59,14 @@
       <section class="relato-section" id="contexto">
         <h2>1) Contexto e Motivação</h2>
         <p>
-          Esta etapa da disciplina está diretamente ligada à minha pesquisa de mestrado no IME-USP.
-          O tema central da tese é a <strong>diversidade de código no kernel Linux</strong>: como
-          patches submetidos a uma mesma mailing list variam em termos de estrutura, estilo e
-          complexidade, e de que forma essas variações podem guiar um <em>Gerador de Soluções</em>
-          capaz de produzir contribuições mais diversas e representativas.
+          O tema central da minha tese (até o momento) é a <strong>diversidade de código e geração de soluções para cunho educativo</strong>. Assim, tentar
+          aplicar alguma das métricas que estou pesquisando em cima do dataset disponibilizado das mailing lists do Kernel (LKML5Ws), é um bom avanço nessa direção.
+          Isso será interessante de analisar no contexto Linux, pois os patches submetidos a uma mesma mailing list variam em termos de estrutura, estilo e
+          complexidade.
         </p>
         <p>
           Para viabilizar essa análise, o ponto de partida é o dataset
-          <strong>LKML5Ws</strong> (<em>Linux Kernel Mailing Lists — What, When, Who, Where, Why</em>),
+          <strong>LKML5Ws</strong> (<em>Linux Kernel Mailing Lists - What, When, Who, Where, Why</em>),
           publicado por pesquisadores do próprio IME-USP. Com quase 30 milhões de e-mails extraídos
           de 350 mailing lists, o dataset cobre 30 anos de desenvolvimento do kernel Linux.
         </p>
@@ -85,18 +83,18 @@
       <section class="relato-section" id="dataset">
         <h2>2) O Dataset LKML5Ws e a Mailing List IIO</h2>
         <p>
-          O LKML5Ws organiza os dados em formato relacional (Parquet), com uma linha por e-mail.
+          O LKML5Ws organiza os dados em formato parquet com uma linha por e-mail.
           Para cada contribuição, o dataset registra:
         </p>
         <ul>
-          <li><strong>what</strong> — a modificação de código (<code>code</code>), no formato unified diff;</li>
-          <li><strong>when</strong> — a data de envio do patch (<code>date</code>);</li>
-          <li><strong>who</strong> — remetente e papéis dos contribuidores auxiliares (<code>from</code>, <code>trailers</code>);</li>
-          <li><strong>where</strong> — a mailing list de destino;</li>
-          <li><strong>why</strong> — assunto e corpo do e-mail explicando a mudança.</li>
+          <li><strong>what</strong>: a modificação de código (<code>code</code>), no formato unified diff;</li>
+          <li><strong>when</strong>: a data de envio do patch (<code>date</code>);</li>
+          <li><strong>who</strong>: remetente e papéis dos contribuidores auxiliares (<code>from</code>, <code>trailers</code>);</li>
+          <li><strong>where</strong>: a mailing list de destino;</li>
+          <li><strong>why</strong>: assunto e corpo do e-mail explicando a mudança.</li>
         </ul>
         <p>
-          Ao filtrar pela mailing list IIO, o subconjunto extraído apresenta o seguinte perfil:
+          Ao filtrar pela mailing list IIO, o subconjunto extraído apresentou:
         </p>
         <ul>
           <li><strong>119.896</strong> e-mails no total;</li>
@@ -112,38 +110,36 @@
 
       <!-- ── 3) Desafio SHA ── -->
       <section class="relato-section" id="desafio-sha">
-        <h2>3) Desafio 1 — Hashes Abreviados dos Blobs</h2>
+        <h2>3) Primeiro Desafio: Hashes Abreviados dos Blobs</h2>
         <p>
           A linha <code>index</code> de cada bloco diff contém hashes dos blobs git antes e depois
           da modificação, por exemplo:
         </p>
         <pre data-lang="diff"><code>index d707d43d5526..3a9f1b8c4e21 100644</code></pre>
         <p>
-          O problema: esses hashes são <strong>abreviados</strong> (entre 9 e 12 caracteres na
+          O problema é que esses hashes são <strong>abreviados</strong> (entre 9 e 12 caracteres na
           maioria dos casos), enquanto a API de blobs do GitHub exige exatamente 40 caracteres.
           A distribuição no dataset IIO é:
         </p>
         <ul>
-          <li>12 caracteres: ~2.318 ocorrências (maioria);</li>
+          <li>12 caracteres: ~2.318 ocorrências (maior parte);</li>
           <li>9 caracteres: ~206 ocorrências;</li>
           <li>40 caracteres: apenas ~66 ocorrências.</li>
         </ul>
         <p>
-          Tentativas de uso da API REST do GitHub (<code>GET /repos/torvalds/linux/git/blobs/{sha}</code>)
-          retornavam <strong>HTTP 422</strong> para hashes abreviados. A alternativa via endpoint
-          <code>cgit</code> do kernel.org retornava <strong>HTTP 403</strong>. A abordagem via API
-          foi abandonada.
-        </p>
+          Tentativas de uso da API REST do GitHub com o (<code>{sha}</code>) disponível
+          retornavam <strong>HTTP 422</strong> para as hashes abreviados, enquanto a alternativa via endpoint
+          <code>cgit</code> do kernel.org retornava <strong>HTTP 403</strong>. Desse modo, tive que abandonar a abordagem via API.        </p>
         <p>
-          A solução foi usar o <strong>git local</strong>: o comando
-          <code>git cat-file -p &lt;sha_abreviado&gt;</code> resolve hashes abreviados nativamente,
-          sem necessidade de expansão para 40 caracteres. Isso eliminou o problema de uma vez.
+          A solução foi usar o <strong>git local</strong>, como eu já havia o projeto localmente por conta das etapas anteriores da disciplina. Assim, o comando
+          <code>git cat-file -p &lt;sha_abreviado&gt;</code> resolve os hashes abreviados nativamente,
+          sem necessidade de expansão para 40 caracteres.
         </p>
       </section>
 
       <!-- ── 4) Desafio patches ── -->
       <section class="relato-section" id="desafio-patches">
-        <h2>4) Desafio 2 — Patches Propostos, Não Mesclados</h2>
+        <h2>4) Segundo Desafio: Patches Propostos, Não Mesclados</h2>
         <p>
           Os e-mails da mailing list representam <strong>patches em revisão</strong>, não commits
           já mesclados. Isso traz duas implicações diretas:
@@ -151,7 +147,7 @@
         <ol>
           <li>
             O blob <em>after</em> (versão modificada) pode não existir em nenhum repositório
-            público, pois o patch pode ter sido rejeitado ou ainda estar em discussão.
+            público, pois o patch pode ter sido rejeitado ou ainda estar em discussão;
           </li>
           <li>
             Mesmo o blob <em>before</em> (versão original) pode não estar em
@@ -185,7 +181,7 @@
         </p>
         <pre data-lang="bash"><code>git cat-file -p &lt;before_sha&gt;</code></pre>
         <p>
-          com <code>cwd=IIO_PATH</code>. O git resolve o hash abreviado nativamente e retorna o
+          com <code>cwd=IIO_PATH</code>. O git resolve o hash abreviado e retorna o
           conteúdo integral do arquivo no estado <em>pré-patch</em>. Isso garante:
         </p>
         <ul>
@@ -197,13 +193,13 @@
             <strong>Sem rate limit</strong>: operações locais, sem dependência de rede ou token de API;
           </li>
           <li>
-            <strong>Ancestralidade correta</strong>: os patches do IIO foram escritos contra a
-            árvore <code>jic23/iio</code>, que é exatamente o que temos localmente.
+            <strong>Branch garantida</strong>: os patches do IIO foram escritos contra a
+            árvore <code>jic23/iio</code>, que é exatamente o que tenho localmente.
           </li>
         </ul>
         <p>
-          Quando o <code>git cat-file</code> falha (hash não presente — patch escrito contra um fork
-          ou SHA muito antigo removido pelo GC), o pipeline recorre a um fallback baseado nas linhas
+          Quando o <code>git cat-file</code> falha (hash não presente por patch ter sido escrito contra um fork
+          ou SHA muito antigo removido), o pipeline recorre a um fallback baseado nas linhas
           de contexto do próprio diff, marcando a fonte como <code>diff_context</code>.
         </p>
 
@@ -249,7 +245,7 @@
             seguido de <code>(</code>), ela é registrada como candidata a nome de função.
           </li>
           <li>
-            Quando <code>depth</code> passa de 0 → 1, o corpo da função começa; quando retorna
+            Quando <code>depth</code> passa de 0 a 1, o corpo da função começa; quando retorna
             a 0, o intervalo <code>[start_line, end_line]</code> é registrado.
           </li>
           <li>
@@ -263,7 +259,7 @@
         <p>
           Quando nenhuma função se sobrepõe ao hunk (caso raro, geralmente em inicializadores
           estáticos ou macros de nível de arquivo), o fallback é retornar as linhas do arquivo
-          em torno do hunk com ±5 linhas de margem. Fonte: <code>git_blob_hunk_fallback</code>.
+          em torno do hunk com ±5 linhas de margem via <code>git_blob_hunk_fallback</code>.
         </p>
         <p>
           Extensões alvo para extração de funções: <code>.c</code>, <code>.h</code>,
@@ -274,83 +270,179 @@
 
       <!-- ── 7) Pipeline ── -->
       <section class="relato-section" id="pipeline">
-        <h2>7) Pipeline Completo e Schema de Saída</h2>
+        <h2>7) Pipeline de Enriquecimento</h2>
         <p>
-          O notebook <code>KLML.ipynb</code> (24 células) implementa o pipeline em duas etapas:
-          <strong>pré-processamento</strong> (células 4–12) e <strong>EDA</strong> (células 13–23).
+          O pipeline de enriquecimento está implementado em <code>preprocess.py</code>, um script
+          Python standalone executado com:
+        </p>
+        <pre data-lang="bash"><code>uv run python preprocess.py</code></pre>
+        <p>
+          O script lê <code>data/iio.parquet</code> e produz <code>data/iio_enriched.parquet</code>.
+          O arquivo de entrada precisa ser baixado previamente do dataset LKML5Ws:
+        </p>
+        <pre data-lang="text"><code>https://files.rcpassos.me/public/Academic/Datasets/LKML5Ws_uncompressed_lists/list%3Dlinux-iio/</code></pre>
+        <p>
+          Além do input, é necessário configurar a variável <code>IIO_PATH</code> no <code>.env</code>
+          apontando para o clone local do repositório <code>jic23/iio</code>. O pipeline é organizado
+          em cinco módulos lógicos:
         </p>
 
-        <h3>Células de pré-processamento</h3>
+        <h3>Módulos do <code>preprocess.py</code></h3>
         <ul>
-          <li><code>parse_diff()</code> — parser de estado que extrai caminhos de arquivo, before/after SHA e intervalos de linha de cada hunk;</li>
-          <li><code>fetch_blob()</code> — executa <code>git cat-file -p &lt;sha&gt;</code> na árvore IIO local;</li>
-          <li><code>find_c_functions()</code> — extrator de funções por brace counting com três estratégias de fallback;</li>
-          <li><code>process_patch_row()</code> — orquestra as funções acima para uma linha do dataset;</li>
-          <li>Smoke test em 5 linhas antes do processamento completo;</li>
-          <li>Pipeline principal com barra de progresso <code>tqdm</code> e suporte a retomada (resume).</li>
+          <li>
+            <strong>1. Diff parsing</strong>: <code>parse_diff()</code>: parser de estado que
+            percorre o unified diff linha a linha, extraindo caminhos de arquivo, flags de
+            novo/deletado, before/after SHA e os hunks com seus intervalos de linha;
+          </li>
+          <li>
+            <strong>2. Blob fetching</strong>: <code>fetch_blob()</code>: executa
+            <code>git cat-file -p &lt;sha&gt;</code> com <code>cwd=IIO_PATH</code>, retornando
+            o conteúdo integral do arquivo pré-patch ou uma string de status de erro;
+          </li>
+          <li>
+            <strong>3. Extração de funções C</strong>: <code>find_c_functions()</code>,
+            <code>extract_functions_for_hunks()</code>, <code>extract_from_diff_context()</code>
+            e <code>extract_new_file_functions()</code>: conjunto de funções que localiza funções
+            por brace counting e seleciona as que se sobrepõem aos hunks do diff, com três
+            estratégias de fallback;
+          </li>
+          <li>
+            <strong>4. Processamento por linha</strong>: <code>process_patch_row()</code>:
+            orquestra os módulos anteriores para uma linha do dataframe, retornando uma lista de
+            registros enriquecidos (um por patch x arquivo x função);
+          </li>
+          <li>
+            <strong>5. Pipeline principal</strong>: <code>run_pipeline()</code>: carrega o
+            .parquet de entrada, verifica <code>message_id</code>s já processados para suporte a
+            retomada, itera sobre os patches com barra de progresso <code>tqdm</code>, adiciona
+            colunas derivadas (<code>function_loc</code>, <code>subsystem</code>) e salva o
+            resultado.
+          </li>
         </ul>
 
         <h3>Schema do arquivo <code>data/iio_enriched.parquet</code></h3>
         <p>
-          O resultado é um arquivo Parquet onde <strong>cada linha representa um
-          (patch, arquivo, função)</strong>. Um único e-mail de patch pode gerar múltiplas linhas
-          (vários arquivos × várias funções modificadas).
+          O resultado é um arquivo Parquet com <strong>235.683 linhas × 18 colunas</strong>,
+          onde <strong>cada linha representa um (patch, arquivo, função)</strong>. Um único
+          e-mail de patch pode gerar múltiplas linhas (vários arquivos × várias funções modificadas).
         </p>
-        <table style="width:100%; border-collapse: collapse; font-size: 0.9rem; margin: 1rem 0">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.87rem; margin: 1rem 0">
           <thead>
             <tr style="border-bottom: 2px solid var(--border)">
               <th style="text-align:left; padding: 6px 8px">Coluna</th>
+              <th style="text-align:left; padding: 6px 8px">Tipo</th>
+              <th style="text-align:right; padding: 6px 8px">Nulos</th>
               <th style="text-align:left; padding: 6px 8px">Descrição</th>
             </tr>
           </thead>
           <tbody>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>message_id</code></td>
-              <td style="padding: 6px 8px">ID do e-mail original</td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Identificador único do e-mail no mailing list (<code>&lt;hash&gt;@&lt;domínio&gt;</code>)</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>subject</code></td>
-              <td style="padding: 6px 8px">Assunto do e-mail (título do patch)</td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Assunto do e-mail com o patch</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>from</code></td>
-              <td style="padding: 6px 8px">Autor do patch (pseudonimizado)</td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Remetente do patch (nome + e-mail)</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>date</code></td>
-              <td style="padding: 6px 8px">Data de envio do patch</td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Data/hora de envio do patch (<code>YYYY-MM-DD HH:MM:SS</code>)</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>patch_version</code></td>
-              <td style="padding: 6px 8px">Versão do patch (v1, v2, v3…)</td>
+              <td style="padding: 6px 8px"><code>float64</code></td>
+              <td style="padding: 6px 8px; text-align:right">96.660</td>
+              <td style="padding: 6px 8px">Versão do patch (ex: v2 → 2.0); nulo quando não informada</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 8px"><code>patchset_sequence_number</code></td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">35.855</td>
+              <td style="padding: 6px 8px">Posição do patch no patchset (ex: <code>6/6</code>); nulo para patches únicos</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 8px"><code>subject_tags</code></td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">424</td>
+              <td style="padding: 6px 8px">Tags extraídas do assunto em JSON (ex: <code>["PATCH", "v2", "6/6"]</code>)</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>file_path</code></td>
-              <td style="padding: 6px 8px">Caminho do arquivo modificado (ex: <code>drivers/iio/adc/ti-ads1110.c</code>)</td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Caminho do arquivo modificado no repositório do kernel (ex: <code>drivers/iio/adc/ti-ads1110.c</code>)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 8px"><code>file_extension</code></td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Extensão do arquivo (ex: <code>.c</code>, <code>.h</code>); <code>none</code> quando ausente</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 8px"><code>hunk_line_ranges</code></td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Intervalos de linhas dos hunks do diff em JSON (<code>[{start, length}, …]</code>)</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>function_name</code></td>
-              <td style="padding: 6px 8px">Nome da função extraída (nullable)</td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">101.205</td>
+              <td style="padding: 6px 8px">Nome da função modificada; nulo quando não foi possível identificar</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>function_code</code></td>
-              <td style="padding: 6px 8px">Corpo completo da função pré-patch</td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Código-fonte da função extraído do repositório</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 8px"><code>function_start_line</code></td>
+              <td style="padding: 6px 8px"><code>int64</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Linha de início da função no arquivo</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <td style="padding: 6px 8px"><code>function_end_line</code></td>
+              <td style="padding: 6px 8px"><code>int64</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Linha de fim da função no arquivo</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>source</code></td>
-              <td style="padding: 6px 8px"><code>git_blob</code> | <code>git_blob_hunk_fallback</code> | <code>diff_context</code> | <code>new_file</code></td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Origem do trecho extraído: <code>git_blob</code> | <code>git_blob_hunk_fallback</code> | <code>diff_context</code> | <code>new_file</code></td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>fetch_status</code></td>
-              <td style="padding: 6px 8px"><code>git_blob</code> | <code>not_found</code> | <code>no_sha</code> | <code>new_file</code> | <code>skipped_non_code</code></td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Status da busca do blob: <code>git_blob</code> | <code>not_found</code> | <code>no_sha</code> | <code>new_file</code> | <code>skipped_non_code</code></td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 8px"><code>function_loc</code></td>
-              <td style="padding: 6px 8px">Linhas de código da função (derivado)</td>
+              <td style="padding: 6px 8px"><code>int64</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Linhas de código (LOC) da função (coluna derivada)</td>
             </tr>
             <tr>
               <td style="padding: 6px 8px"><code>subsystem</code></td>
-              <td style="padding: 6px 8px">Primeiros 3 segmentos do caminho (ex: <code>drivers/iio/adc</code>)</td>
+              <td style="padding: 6px 8px"><code>str</code></td>
+              <td style="padding: 6px 8px; text-align:right">0</td>
+              <td style="padding: 6px 8px">Primeiros 3 segmentos do caminho como proxy de subsistema (ex: <code>drivers/iio/adc</code>)</td>
             </tr>
           </tbody>
         </table>
@@ -363,12 +455,12 @@
         <h3>Resultado da execução</h3>
         <p>
           O pipeline rodou os 41.861 patches em aproximadamente <strong>9 minutos</strong>
-          (76,65 it/s), encerrando com apenas 7 erros — todos de codificação UTF-8 em nomes
-          de autores de e-mails antigos. Esses registros foram ignorados sem impacto na análise.
+          , encerrando com apenas 7 erros (todos de codificação UTF-8 em nomes
+          de autores de e-mails antigos). Esses registros foram ignorados sem impacto na análise.
           A saída final:
         </p>
         <pre data-lang="text"><code>Preprocessing: 100%|████| 41861/41861 [09:06&lt;00:00, 76.65it/s]
-INFO   Done — 235683 records, 7 errors
+INFO   Done - 235683 records, 7 errors
 INFO   Saved 235683 records → data/iio_enriched.parquet</code></pre>
         <p>
           A análise de cobertura rodada em seguida confirma a qualidade do enriquecimento:
@@ -387,10 +479,10 @@ Enriched dataset rows (total):         235,683
 Coverage (patches with ≥1 record):  99.6%</code></pre>
         <p>
           Os números revelam a expansão de granularidade do pipeline: de 41.861 patches de entrada
-          para <strong>235.683 registros</strong> de saída — uma razão de ~5,6 registros por patch
+          para <strong>235.683 registros</strong> de saída, uma razão de ~5,6 registros por patch
           em média, refletindo que a maioria dos patches modifica múltiplos arquivos e funções.
           Dos 235k registros, <strong>203.077 são arquivos C/H/RS</strong> (86,2%) e
-          <strong>134.478 têm nome de função extraído</strong> (57% do total) — o subconjunto
+          <strong>134.478 têm nome de função extraído</strong> (57% do total), o subconjunto
           mais rico para análise de diversidade. A <strong>cobertura de 99,6%</strong> dos patches
           com ao menos um registro no dataset enriquecido confirma que o pipeline é robusto mesmo
           diante das limitações de resolução de blob SHA.
@@ -401,54 +493,33 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
       <section class="relato-section" id="eda">
         <h2>8) Análise Exploratória de Dados</h2>
         <p>
-          O pipeline processou os 41.861 patches em <strong>~9 minutos</strong> (76,65 it/s),
-          produzindo <strong>235.683 registros</strong> com apenas 7 erros de codificação UTF-8
-          (0,017% — todos ignorados sem impacto na análise). A cobertura ficou em
-          <strong>99,6%</strong> dos patches originais, com 134.478 registros com nome de função
-          extraído. Os resultados das seções a seguir são baseados nesse dataset enriquecido.
+          A análise exploratória está implementada no notebook <code>1. EDA.ipynb</code>.
+          Os resultados das seções a seguir são baseados no dataset enriquecido.
         </p>
 
-        <!-- 8.1 Preprocess -->
-        <h3>8.1) Execução do Pipeline de Pré-processamento</h3>
+        <!-- 8.1 records-code -->
+        <h3>8.1) Distribuição por Tipo de Arquivo</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/Preprocess.png"
-               alt="Terminal mostrando o pipeline de pré-processamento em execução"
-               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
-          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
-            Pipeline iniciando: 119.896 linhas carregadas, 41.861 com diffs a processar.
-          </figcaption>
-        </figure>
-        <p>
-          O terminal confirma a lógica de filtragem inicial: dos quase 120k e-mails da mailing
-          list IIO, apenas ~35% contêm patches com diff. A velocidade de ~94 it/s (na captura
-          inicial, estabilizando em ~76 it/s) demonstra que a abordagem de
-          <code>git cat-file</code> local é suficientemente rápida para o volume do dataset,
-          sem necessidade de cache intermediário.
-        </p>
-
-        <!-- 8.2 records-code -->
-        <h3>8.2) Distribuição por Tipo de Arquivo</h3>
-        <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/records-code.png"
+          <img src="../images/report-13/records-code.png"
                alt="Gráfico de barras por extensão de arquivo e pizza de código vs não-código"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
-            Esquerda: contagem de registros por extensão. Direita: proporção código vs. não-código.
+            Esquerda: contagem de registros por extensão. Direita: proporção de arquivos código vs. não-código.
           </figcaption>
         </figure>
         <p>
-          Arquivos <code>.c</code> representam a esmagadora maioria dos registros (~180k),
+          Arquivos <code>.c</code> representam a maioria esmagadora dos registros (~180k),
           confirmando que o IIO é primariamente um subsistema de drivers em C. O
           <strong>pie chart revela que 86,2% do dataset é código</strong> (<code>.c/.h/.rs</code>)
-          — apenas 13,8% é config/docs (<code>.yaml</code>, <code>.rst</code>, Makefile). Essa
+        , em que apenas 13,8% é config/docs (<code>.yaml</code>, <code>.rst</code>, Makefile). Essa
           proporção é favorável para a análise de diversidade: o sinal de código supera em muito
           o ruído de configuração, e a extração de funções se aplica à vasta maioria dos registros.
         </p>
 
-        <!-- 8.3 enrichment-source -->
-        <h3>8.3) Fonte de Enriquecimento e Status de Fetch</h3>
+        <!-- 8.2 enrichment-source -->
+        <h3>8.2) Fonte de Enriquecimento e Status de Fetch</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/enrichment-source.png"
+          <img src="../images/report-13/enrichment-source.png"
                alt="Barras horizontais de enrichment source e fetch status"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
@@ -467,22 +538,22 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 10px"><code>git_blob</code></td>
               <td style="padding: 6px 10px; text-align:right">88.790</td>
-              <td style="padding: 6px 10px"><code>git cat-file</code> bem-sucedido — arquivo pré-patch exato obtido da árvore local do IIO</td>
+              <td style="padding: 6px 10px"><code>git cat-file</code> bem-sucedido: arquivo pré-patch exato obtido da árvore local do IIO</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 10px"><code>new_file</code></td>
               <td style="padding: 6px 10px; text-align:right">70.618</td>
-              <td style="padding: 6px 10px">Patch introduz um arquivo novo — conteúdo reconstituído pelas linhas <code>+</code> do diff</td>
+              <td style="padding: 6px 10px">Patch introduz um arquivo novo: conteúdo reconstituído pelas linhas <code>+</code> do diff</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 10px"><code>not_found</code></td>
               <td style="padding: 6px 10px; text-align:right">48.324</td>
-              <td style="padding: 6px 10px">SHA não encontrado no repositório local (patch escrito contra um fork ou commit muito antigo) — fallback para diff context</td>
+              <td style="padding: 6px 10px">SHA não encontrado no repositório local (patch escrito contra um fork ou commit muito antigo): fallback para diff context</td>
             </tr>
             <tr style="border-bottom: 1px solid var(--border)">
               <td style="padding: 6px 10px"><code>skipped_non_code</code></td>
               <td style="padding: 6px 10px; text-align:right">27.914</td>
-              <td style="padding: 6px 10px">Arquivo não-código (Kconfig, Makefile, YAML…) — diff armazenado como está, sem extração de funções</td>
+              <td style="padding: 6px 10px">Arquivo não-código (Kconfig, Makefile, YAML…): diff armazenado como está, sem extração de funções</td>
             </tr>
             <tr>
               <td style="padding: 6px 10px"><code>no_sha</code></td>
@@ -496,23 +567,23 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
           O gráfico de <strong>Enrichment Source</strong> revela um resultado contraintuitivo:
           <code>diff_context</code> (80.975) supera <code>git_blob</code> (69.803) como fonte mais
           comum. Isso indica que uma parcela significativa dos patches foi escrita contra commits
-          não presentes na árvore <code>jic23/iio</code> local — provavelmente patches mais antigos
+          não presentes na árvore <code>jic23/iio</code> local, provavelmente patches mais antigos
           ou oriundos de forks. Em compensação, os 65.926 registros <code>new_file</code>
           representam novos drivers adicionados integralmente, que têm contexto completo por
-          definição. O status de fetch confirma: <code>git_blob</code> (88.790) e
+          definição. O status de fetch confirmam que <code>git_blob</code> (88.790) e
           <code>new_file</code> (70.618) somam ~160k registros com contexto rico; os 48.324
           <code>not_found</code> (~20%) são o principal ponto de atenção para refinar a análise,
           pois sua representação de contexto é mais limitada.
         </p>
 
-        <!-- 8.4 top20 arquivos -->
-        <h3>8.4) Top 20 Arquivos Mais Modificados</h3>
+        <!-- 8.3 top20 arquivos -->
+        <h3>8.3) Top 20 Arquivos Mais Modificados</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/top20.png"
+          <img src="../images/report-13/top20.png"
                alt="Top 20 arquivos com mais patches únicos"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
-            Contagem de patches únicos por arquivo — os 20 mais modificados da mailing list IIO.
+            Contagem de patches únicos por arquivo - os 20 mais modificados da mailing list IIO.
           </figcaption>
         </figure>
         <p>
@@ -527,34 +598,29 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
           esses arquivos de alta frequência são os candidatos mais ricos.
         </p>
 
-        <!-- 8.5 top20 funções -->
-        <h3>8.5) Top 20 Funções Mais Modificadas</h3>
+        <!-- 8.4 top20 funções -->
+        <h3>8.4) Top 20 Funções Mais Modificadas</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/top20-modified.png"
-               alt="Top 20 funções/símbolos com mais patches únicos"
+          <img src="../images/report-13/top20-modified.png"
+               alt="Top 20 funções com mais patches únicos"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
-            Os 20 símbolos que aparecem em mais patches distintos no dataset enriquecido.
+            As 20 funcões que aparecem em mais patches distintos no dataset enriquecido.
           </figcaption>
         </figure>
         <p>
-          O resultado revela algo importante sobre o extrator: os três primeiros colocados —
-          <code>IIO_DEVICE_ATTR</code> (~540), <code>SIMPLE_DEV_PM_OPS</code> (~425) e
-          <code>IIO_CONST_ATTR</code> (~375) — são <strong>macros</strong>, não funções. O extrator
-          de brace-counting os captura porque aparecem na coluna 0 com formato de assinatura, o que
-          é um artefato da abordagem sintática simples. Na prática, esses símbolos aparecem em
-          centenas de drivers distintos como boilerplate de declaração de atributos e operações de
-          power management, acumulando frequência alta mas baixa diversidade estrutural individual.
-          O sinal mais relevante para diversidade aparece a partir do 8º lugar, nos
-          <code>*_probe()</code> de drivers específicos — funções com lógica de inicialização
-          rica e única por dispositivo. Isso sugere um <strong>filtro por tipo de símbolo</strong>
-          como refinamento necessário antes da etapa de métricas.
+          O ranking é dominado por funções <code>_probe</code>, 15 das 20 entradas são
+          inicializadores de driver, o que faz sentido: <code>probe</code> é a função mais
+          complexa de qualquer driver e concentra a maior parte das revisões ao longo do histórico.
+          Exceções notáveis são <code>event_is_known</code> (4º, ~95 patches),
+          <code>inv_mpu6050_read_fifo</code> (~80) e <code>iio_read_channel_info</code> (~62),
+          função genérica do core IIO compartilhada por todos os drivers que implementam canais.
         </p>
 
-        <!-- 8.6 subsistemas -->
-        <h3>8.6) Distribuição por Subsistema</h3>
+        <!-- 8.5 subsistemas -->
+        <h3>8.5) Distribuição por Subsistema</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/top20-subsytems.png"
+          <img src="../images/report-13/top20-subsytems.png"
                alt="Top 20 subsistemas por contagem de patches únicos"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
@@ -562,20 +628,20 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
           </figcaption>
         </figure>
         <p>
-          <code>drivers/iio/adc</code> lidera com ~7.300 patches — quase 1,5× o segundo colocado.
-          ADCs (conversores analógico-digitais) são o tipo de sensor mais ubíquo em sistemas
+          Naturalmente, <code>drivers/iio/adc</code> lidera com ~7.300 patches.
+          ADCs (conversores analógico-digitais) são o tipo de sensor mais presente em sistemas
           embarcados, o que explica a concentração. O segundo lugar, <code>drivers/staging/iio</code>
-          (~4.800), é particularmente interessante: representa anos de atividade de graduação de
-          drivers do staging para a árvore principal, um processo com padrões de patch distintos
+          (~4.800), é particularmente interessante: representa anos de atividade de merge de
+          drivers do staging para a trree principal, um processo com padrões de patch distintos
           (limpeza de API, remoção de código legado). Para análise de diversidade, comparar
-          patches de <code>staging</code> com os de subsistemas graduados pode revelar diferenças
+          patches de <code>staging</code> com os de subsistemas mergeados pode revelar diferenças
           sistemáticas de estilo e qualidade.
         </p>
 
-        <!-- 8.7 tamanho funções -->
-        <h3>8.7) Distribuição de Tamanho das Funções</h3>
+        <!-- 8.6 tamanho funções -->
+        <h3>8.6) Distribuição de Tamanho das Funções</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/function-size.png"
+          <img src="../images/report-13/function-size.png"
                alt="Histograma e CDF do tamanho das funções em linhas de código"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
@@ -583,20 +649,20 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
           </figcaption>
         </figure>
         <p>
-          A distribuição é fortemente assimétrica à direita: o pico está em 5–15 LoC, com queda
+          A distribuição é fortemente assimétrica à direita: o pico está entre 5-15 LoC, com queda
           abrupta até ~50 LoC e cauda longa até 300+. A CDF mostra que <strong>o percentil 50
-          está em torno de 40 LoC</strong> — metade das funções extraídas é pequena o suficiente
+          está em torno de 40 LoC</strong>, ou seja, metade das funções extraídas é pequena o suficiente
           para caber num único diff de revisão. Isso tem uma implicação direta para a análise
           de diversidade: funções muito pequenas (inicializadores, getters triviais, macros
           capturadas erroneamente) carregam pouco conteúdo estrutural. Um <strong>filtro de
-          mínimo de LoC</strong> (sugestão: ≥10 linhas) provavelmente eliminará ruído sem
+          mínimo de LoC</strong> (algo como ≥10 linhas) provavelmente eliminará ruído sem
           perda significativa de sinal.
         </p>
 
-        <!-- 8.8 autores -->
-        <h3>8.8) Concentração de Contribuições por Autor</h3>
+        <!-- 8.7 autores -->
+        <h3>8.7) Concentração de Contribuições por Autor</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/author-diversity.png"
+          <img src="../images/report-13/author-diversity.png"
                alt="Curva de concentração de autores e histograma de patches por autor"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
@@ -606,7 +672,7 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
         <p>
           A curva de concentração evidencia um <strong>Pareto acentuado</strong>: ~250 autores
           (de um total de ~1.800) são responsáveis por 80% de todos os patches. O histograma em
-          escala logarítmica confirma a distribuição de lei de potência — mais de 1.000 autores
+          escala logarítmica confirma a distribuição de lei de potência, mais de 1.000 autores
           contribuíram com menos de 50 patches cada, enquanto um único autor ultrapassou 2.500
           contribuições. Para a análise de diversidade, isso significa que o espaço de código é
           amplamente dominado por um núcleo pequeno de colaboradores recorrentes, cujos padrões
@@ -614,10 +680,10 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
           por volume de contribuição é um passo importante antes da etapa de clustering.
         </p>
 
-        <!-- 8.9 timeline -->
-        <h3>8.9) Evolução Temporal dos Patches</h3>
+        <!-- 8.8 timeline -->
+        <h3>8.8) Evolução Temporal dos Patches</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/patch-over-time.png"
+          <img src="../images/report-13/patch-over-time.png"
                alt="Submissões mensais de patches de 2010 a 2026"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
@@ -626,38 +692,29 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
         </figure>
         <p>
           O subsistema IIO foi criado por volta de 2010 e cresceu de forma consistente até hoje.
-          A linha de tendência é claramente ascendente — o volume mensal que era de ~50–100
-          patches em 2011 chegou a ~300–400 na faixa 2020–2025. O <strong>pico de ~950 patches
-          em início de 2026</strong> (o ponto mais alto do gráfico) é notável: pode refletir um
-          ciclo de merge window intenso ou uma campanha de graduação de drivers de staging.
-          Para a análise de diversidade, essa evolução temporal sugere usar a data como variável
-          de controle — convenções de código mudaram ao longo dos anos e patches de 2012 e 2025
-          podem apresentar diferenças estilísticas sistemáticas independentes do conteúdo lógico.
+          A linha de tendência é claramente ascendente, uma vez que o volume mensal que era de 50 a 100
+          patches em 2011 chegou a ~300-400 na faixa entre 2020 e 2025. O <strong>pico de ~950 patches
+          em início de 2026</strong> (o ponto mais alto do gráfico) é notável, podendo refletir o impacto dessa disciplina na tree.
+        
         </p>
 
-        <!-- 8.10 versão -->
-        <h3>8.10) Distribuição de Versão dos Patches</h3>
+        <!-- 8.9 versão -->
+        <h3>8.9) Distribuição de Versão dos Patches</h3>
         <figure style="margin: 1.2rem 0">
-          <img src="../images/parte-3/patch-version.png"
+          <img src="../images/report-13/patch-version.png"
                alt="Distribuição da versão dos patches (v0 a v17)"
                style="width:100%; border-radius:6px; border:1px solid var(--border)" />
           <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
-            Contagem de registros por versão de patch — de patches sem versão (v0) até v17.
+            Contagem de registros por versão de patch - de patches sem versão (v0) até v17.
           </figcaption>
         </figure>
         <p>
           O gráfico revela um padrão contraintuitivo: <strong>v2 é a versão mais frequente
-          (~38k registros), superando v1 (~6k)</strong>. Isso não significa que a maioria dos
-          patches começa na segunda tentativa — significa que patches enviados sem número de
-          versão explícito no assunto (tratados aqui como v0, com apenas ~400 registros) ou com
-          simplesmente <code>[PATCH]</code> ficam na posição v1 do dataset, enquanto revisões
-          subsequentes passam a ter <code>[PATCH v2]</code> explícito. O decaimento exponencial
+          (~38k registros), superando v1 (~6k)</strong>. O decaimento exponencial
           de v2 em diante segue o esperado: cada rodada de revisão elimina parte dos patches
           (aceitos ou abandonados). A existência de patches até <strong>v17</strong> revela casos
-          extremos de iteração prolongada, provavelmente mudanças de API controversas ou patches
-          que dependem de outras séries ainda não mescladas. A versão do patch é um proxy válido
-          de qualidade — patches aceitos na v1/v2 tendem a ser mais polidos que iterações tardias
-          — tornando-o um potencial rótulo fraco para análise supervisionada de diversidade.
+          extremos de iteração prolongada, provavelmente patches
+          que dependem de outras séries ainda não mescladas.
         </p>
       </section>
 
@@ -665,7 +722,7 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
       <section class="relato-section" id="proximos">
         <h2>9) Próximos Passos</h2>
         <p>
-          Com o dataset enriquecido disponível no nível de função, as próximas etapas da análise
+          Com o dataset enriquecido disponível e a análise exploratória inicial dos dados concluídas, as próximas etapas da análise
           são:
         </p>
 
@@ -703,19 +760,19 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
         </p>
         <ul>
           <li>
-            <strong>K-Means</strong> sobre embeddings de código — rápido e interpretável,
+            <strong>K-Means</strong> sobre embeddings de código: rápido e interpretável,
             adequado para uma primeira exploração dos grupos;
           </li>
           <li>
-            <strong>HDBSCAN</strong> — detecta clusters de forma arbitrária e identifica
+            <strong>HDBSCAN</strong>: detecta clusters de forma arbitrária e identifica
             automaticamente outliers, útil dado o esperado desbalanceamento entre subsistemas;
           </li>
           <li>
-            <strong>Hierarchical Clustering</strong> — produz dendrogramas que facilitam a
+            <strong>Hierarchical Clustering</strong>: produz dendrogramas que facilitam a
             análise visual da estrutura de similaridade entre patches;
           </li>
           <li>
-            <strong>UMAP + DBSCAN</strong> — redução de dimensionalidade seguida de
+            <strong>UMAP + DBSCAN</strong>: redução de dimensionalidade seguida de
             agrupamento, com visualizações 2D que tornam a estrutura dos clusters interpretável.
           </li>
         </ul>
@@ -723,16 +780,12 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
         <h3>9.3) Análise de qualidade</h3>
         <p>
           Uma dimensão relevante é correlacionar os clusters com indicadores de qualidade dos
-          patches. Embora o dataset não contenha informação explícita de aprovação, é possível
-          usar como proxy a <strong>versão do patch</strong> (<code>patch_version</code>): patches
-          aceitos tendem a ter menos iterações de revisão. Além disso, uma validação manual
-          de uma amostra estratificada por cluster permitiria aferir se os grupos refletem
-          diferenças reais em qualidade e estrutura.
+          patches. Embora o dataset não contenha informação explícita de aprovação, talvez seka possível
+          usar como proxy a <strong>versão do patch</strong> (<code>patch_version</code>). Entretanto, como não há informação se o patch foi aceito ou não,
+          qualquer métrica de qualidade pode ser fraca. Uma validação manual seria mais forte, mas pouco eficiente
         </p>
         <p>
-          Os resultados desta análise irão alimentar diretamente o
-          <strong>Gerador de Soluções</strong> da tese, orientando a geração de patches mais
-          diversos e representativos do espaço de contribuições reais ao subsistema IIO.
+          Os resultados dessas análises podem auxiliar diretamente o desenvolvimento da minha tese!
         </p>
       </section>
 
@@ -741,7 +794,7 @@ Coverage (patches with ≥1 record):  99.6%</code></pre>
     <hr class="nav-divider" />
     <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
       <a href="relato-12.html">← Implementando as Sugestões de Revisão no PR #1266</a>
-      <a href="relato-14.html">Métricas de Diversidade de Código →</a>
+      <a href="relato-14.html">Análise de Similaridade de Código →</a>
     </div>
   </main>
 

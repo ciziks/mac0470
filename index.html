@@ -485,7 +485,6 @@
               <span class="tag">python</span>
               <span class="tag">git</span>
               <span class="tag">parquet</span>
-              <span class="tag">mestrado</span>
             </div>
             <a href="reports/relato-13.html" class="read-link">Ler relato →</a>
           </div>
@@ -501,12 +500,12 @@
             <span class="badge badge-done">Completo</span>
           </div>
           <h3>
-            <a href="reports/relato-14.html" class="card-title-link">14) Métricas de Diversidade de Código no Subsistema IIO</a>
+            <a href="reports/relato-14.html" class="card-title-link">14) Análise de Similaridade do Código no Subsistema IIO</a>
           </h3>
           <p>
             Análise multidimensional sobre 16.670 implementações únicas: diversidade léxica
             (TF-IDF), complexidade ciclomática, estrutura AST (tree-sitter) e similaridade
-            semântica (UniXcoder) — revelando que drivers IIO são lexicamente diversos mas
+            semântica (UniXcoder), revelando que drivers IIO são lexicamente diversos mas
             semanticamente convergentes.
           </p>
           <div class="card-footer">
@@ -516,9 +515,98 @@
               <span class="tag">UniXcoder</span>
               <span class="tag">ciclomática</span>
               <span class="tag">IIO</span>
-              <span class="tag">mestrado</span>
             </div>
             <a href="reports/relato-14.html" class="read-link">Ler relato →</a>
+          </div>
+        </div>
+
+        <!-- Relato 15 -->
+        <div class="card card-done">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">Relato 15</span>
+              <span class="card-date">· 21/06</span>
+            </div>
+            <span class="badge badge-done">Completo</span>
+          </div>
+          <h3>
+            <a href="reports/relato-15.html" class="card-title-link">15) Análise de Agrupamento do Código Subsistema IIO</a>
+          </h3>
+          <p>
+            K-Means, HDBSCAN e UMAP + DBSCAN sobre 16.670 embeddings UniXcoder. Clusters globais
+            são difusos e sem separação por operação, motivando análise focada em
+            <code>read_raw</code> (762) e <code>write_raw</code> (449) no próximo relato.
+          </p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">clustering</span>
+              <span class="tag">UMAP</span>
+              <span class="tag">HDBSCAN</span>
+              <span class="tag">K-Means</span>
+              <span class="tag">IIO</span>
+            </div>
+            <a href="reports/relato-15.html" class="read-link">Ler relato →</a>
+          </div>
+        </div>
+
+        <!-- Relato 16 -->
+        <div class="card card-done">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">Relato 16</span>
+              <span class="card-date">· 23/06</span>
+            </div>
+            <span class="badge badge-done">Completo</span>
+          </div>
+          <h3>
+            <a href="reports/relato-16.html" class="card-title-link">16) Clustering dentro das operações <code>read_raw</code> e <code>write_raw</code></a>
+          </h3>
+          <p>
+            Clustering restrito a uma operação IIO por vez revela estilos arquiteturais distintos:
+            2 grupos em <code>read_raw</code> (padrão ADC vs. protocolo pesado) e 5 em
+            <code>write_raw</code> (HID boilerplate, guard moderno, wrapper fino, DAC direto, DAC com staging).
+          </p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">clustering</span>
+              <span class="tag">read_raw</span>
+              <span class="tag">write_raw</span>
+              <span class="tag">HDBSCAN</span>
+              <span class="tag">K-Means</span>
+              <span class="tag">IIO</span>
+            </div>
+            <a href="reports/relato-16.html" class="read-link">Ler relato →</a>
+          </div>
+        </div>
+
+        <!-- Relato 17 -->
+        <div class="card card-done">
+          <div class="card-top">
+            <div class="card-meta">
+              <span class="card-number">Relato 17</span>
+              <span class="card-date">· 24/06</span>
+            </div>
+            <span class="badge badge-done">Completo</span>
+          </div>
+          <h3>
+            <a href="reports/relato-17.html" class="card-title-link">17) Análise de Trajetória de Revisão no Espaço Semântico IIO</a>
+          </h3>
+          <p>
+            Rastreamento de como funções IIO se movem no espaço de embeddings UniXcoder ao longo
+            de revisões de patch (v1 → vN): 63,5% dos patches são resubmissões sem alteração de
+            código; quando mudam, a revisão é cirúrgica (eficiência mediana 1,0) e apenas 0,3%
+            cruzam fronteiras de cluster.
+          </p>
+          <div class="card-footer">
+            <div class="tags">
+              <span class="tag">trajetória</span>
+              <span class="tag">revisão</span>
+              <span class="tag">UniXcoder</span>
+              <span class="tag">K-Means</span>
+              <span class="tag">UMAP</span>
+              <span class="tag">IIO</span>
+            </div>
+            <a href="reports/relato-17.html" class="read-link">Ler relato →</a>
           </div>
         </div>
       </div>

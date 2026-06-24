@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC5856 - Relato 16</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <div class="top-nav">
+    <a href="../index.html">← Início</a>
+    <span class="site-name"><strong>@ciziks</strong> · MAC5856</span>
+  </div>
+
+  <div class="relato-hero">
+    <div class="tut-label">
+      <span class="tut-number">Relato 16</span>
+      <span class="tut-date">· 23/06/2026</span>
+      <span class="badge badge-done">Completo</span>
+    </div>
+    <h1>Clustering do <code>read_raw</code> e <code>write_raw</code></h1>
+    <p class="description">
+      Análise de agrupamento restrita a uma operação IIO por vez, revelando estilos arquiteturais
+      genuinamente distintos: duas estratégias em <code>read_raw</code> (padrão ADC canônico vs.
+      leitura pesada de protocolo) e cinco em <code>write_raw</code> (boilerplate HID, despacho
+      moderno com guard, wrapper fino, DAC com escrita direta e DAC com staging de canal),
+      incluindo análise de autoria, tendências temporais e similaridade inter-cluster.
+    </p>
+    <div class="tags">
+      <span class="tag">clustering</span>
+      <span class="tag">read_raw</span>
+      <span class="tag">write_raw</span>
+      <span class="tag">HDBSCAN</span>
+      <span class="tag">K-Means</span>
+      <span class="tag">UMAP</span>
+      <span class="tag">IIO</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="doc-content">
+      <nav class="toc">
+        <h3>Sumário</h3>
+        <ol>
+          <li><a href="#motivacao">1) Motivação e Setup</a></li>
+          <li><a href="#read-raw">2) <code>read_raw</code> (n = 762)</a>
+            <ol>
+              <li><a href="#read-umap">2.1) Estrutura UMAP</a></li>
+              <li><a href="#read-kmeans">2.2) K-Means</a></li>
+              <li><a href="#read-hdbscan">2.3) HDBSCAN</a></li>
+              <li><a href="#read-composition">2.4) Composição por Subsistema</a></li>
+              <li><a href="#read-similarity">2.5) Similaridade Intra e Inter-cluster</a></li>
+              <li><a href="#read-authors">2.6) Autores e Tendência Temporal</a></li>
+            </ol>
+          </li>
+          <li><a href="#write-raw">3) <code>write_raw</code> (n = 449)</a>
+            <ol>
+              <li><a href="#write-umap">3.1) Estrutura UMAP</a></li>
+              <li><a href="#write-kmeans">3.2) K-Means</a></li>
+              <li><a href="#write-hdbscan">3.3) HDBSCAN</a></li>
+              <li><a href="#write-composition">3.4) Composição por Subsistema</a></li>
+              <li><a href="#write-similarity">3.5) Similaridade Intra e Inter-cluster</a></li>
+              <li><a href="#write-authors">3.6) Autores e Tendência Temporal</a></li>
+            </ol>
+          </li>
+          <li><a href="#comparativo">4) Comparativo e Síntese</a></li>
+          <li><a href="#conclusao">5) Conclusão</a></li>
+        </ol>
+      </nav>
+
+      <!-- ── 1) Motivação ── -->
+      <section class="relato-section" id="motivacao">
+        <h2>1) Motivação e Setup</h2>
+        <p>
+          O Relato 15 mostrou que o clustering global sobre todas as 16.670 funções IIO produz
+          grupos difusos: misturar operações diferentes no mesmo espaço semântico recupera o
+          <em>tipo de operação</em>, não o <em>estilo de implementação</em>. A hipótese deste
+          relato é que clusters interpretáveis emergem apenas quando a análise é restrita a uma
+          única operação, onde toda a variação capturada reflete escolhas de design.
+        </p>
+        <p>
+          Foram analisadas as duas operações mais representativas: <strong><code>read_raw</code>
+          (762 implementações)</strong> e <strong><code>write_raw</code> (449 implementações)</strong>.
+          Pipeline para cada operação:
+        </p>
+        <ol>
+          <li>Embeddings UniXcoder de 768 dimensões;</li>
+          <li>UMAP 2D (visualização) e UMAP 10D (entrada para clustering);</li>
+          <li>K-Means com seleção de <em>k</em> via silhouette score;</li>
+          <li>HDBSCAN para validação baseada em densidade.</li>
+        </ol>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           2) READ_RAW
+           ══════════════════════════════════════════════════════ -->
+      <section class="relato-section" id="read-raw">
+        <h2>2) <code>read_raw</code> (n = 762)</h2>
+        <p>
+          Tanto o K-Means (melhor k = 2, silhouette = <strong>0,5231</strong>) quanto o HDBSCAN
+          (2 clusters, 1,2% de ruído) convergem independentemente para a mesma partição binária,
+          com o silhouette mais alto de toda a análise.
+        </p>
+
+        <table style="width:100%; border-collapse:collapse; font-size:0.9rem; margin:1rem 0">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border)">
+              <th style="text-align:left; padding:6px 10px">Cluster</th>
+              <th style="text-align:center; padding:6px 10px">n</th>
+              <th style="text-align:left; padding:6px 10px">Função representativa</th>
+              <th style="text-align:left; padding:6px 10px">Subsistema</th>
+              <th style="text-align:center; padding:6px 10px">Sim. léxica</th>
+              <th style="text-align:center; padding:6px 10px">Sim. emb.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px"><strong>C0</strong></td>
+              <td style="padding:6px 10px; text-align:center">633 (83%)</td>
+              <td style="padding:6px 10px"><code>vf610_read_raw</code></td>
+              <td style="padding:6px 10px">adc</td>
+              <td style="padding:6px 10px; text-align:center">0,1077</td>
+              <td style="padding:6px 10px; text-align:center">0,7787</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px"><strong>C1</strong></td>
+              <td style="padding:6px 10px; text-align:center">129 (17%)</td>
+              <td style="padding:6px 10px"><code>scd4x_read_raw</code></td>
+              <td style="padding:6px 10px">chemical</td>
+              <td style="padding:6px 10px; text-align:center">0,1299</td>
+              <td style="padding:6px 10px; text-align:center">0,7727</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          A leitura das colunas de similaridade inverte a intuição inicial: a <strong>similaridade
+          léxica é muito baixa (~0,11)</strong> mas a <strong>similaridade de embedding é muito
+          alta (~0,78)</strong>. Isso é a assinatura de uma interface de kernel bem especificada:
+          o contrato da API é compartilhado (mesma estrutura, mesmos valores de retorno IIO)
+          enquanto nomes de registrador e identificadores específicos do hardware divergem
+          completamente.
+        </p>
+
+        <h3 id="read-umap">2.1) Estrutura UMAP</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.2rem 0">
+          <figure style="margin:0">
+            <img src="../images/report-16/read-raw-umap2d.png"
+                 alt="UMAP 2D de read_raw por subsistema"
+                 style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+            <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+              UMAP 2D colorido por subsistema: ADC (n=257) domina e está espalhado por todo
+              o espaço; subsistemas são fortemente interleaved.
+            </figcaption>
+          </figure>
+          <figure style="margin:0">
+            <img src="../images/report-16/read-raw-umap10d.png"
+                 alt="UMAP 10D de read_raw com clusters K-Means"
+                 style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+            <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+              UMAP 10D com clusters K-Means: C1 (n=129) forma um satélite isolado
+              no canto inferior-esquerdo (UMAP-1 ~4 a 7, UMAP-2 ~8,5 a 10).
+            </figcaption>
+          </figure>
+        </div>
+        <p>
+          No nível semântico, implementações de <code>read_raw</code> de subsistemas diferentes
+          são mais parecidas entre si do que diferentes, é o <em>estilo de implementação</em>,
+          não o domínio do sensor, o principal eixo de variação. O K-Means com k=2 no espaço 10D
+          separa C1 como um satélite espacialmente isolado, e a separação é visualmente limpa.
+        </p>
+
+        <h3 id="read-kmeans">2.2) K-Means</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/read-raw-kmeans.png"
+               alt="Curva silhouette e scatter K-Means de read_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Curva de silhouette (pico abrupto em k=2, platô declinante para k=3-11) e scatter
+            K-Means mostrando C1 como satélite isolado no canto inferior-esquerdo.
+          </figcaption>
+        </figure>
+        <p>
+          O pico em k=2 (silhouette = 0,5231) é <strong>agudo e inequívoco</strong>: o score
+          cai imediatamente e nunca se recupera, formando um platô monotonicamente declinante
+          em torno de 0,40 para k=3-11. Isso é evidência forte de que dois é o número natural
+          de grupos, não um artefato de parar cedo. Valores acima de 0,50 em dados de embedding
+          de código indicam separação genuína, não superficial.
+        </p>
+
+        <h3 id="read-hdbscan">2.3) HDBSCAN</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/read-raw-hdbscan.png"
+               alt="HDBSCAN de read_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            HDBSCAN: 2 clusters, 9 pontos de ruído (1,2%), probabilidades de pertencimento
+            uniformemente altas (verde escuro) com poucas transições nas bordas.
+          </figcaption>
+        </figure>
+        <p>
+          O HDBSCAN confirma k=2 com apenas 9 pontos de ruído (1,2%), todos na região de
+          fronteira entre os dois clusters no espaço UMAP. As probabilidades de pertencimento
+          são quase uniformemente altas em toda a visualização, com apenas
+          alguns pontos transicionais nas bordas dos clusters.
+        </p>
+
+        <h3 id="read-composition">2.4) Composição por Subsistema</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.2rem 0">
+          <figure style="margin:0">
+            <img src="../images/report-16/read-raw-composition.png"
+                 alt="Composição K-Means de read_raw"
+                 style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+            <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+              Composição K-Means: ambos os clusters têm maioria ADC, mas C1 tem representação
+              proporcionalmente maior de chemical, proximity, temperature e humidity.
+            </figcaption>
+          </figure>
+          <figure style="margin:0">
+            <img src="../images/report-16/read_raw-hdbscan-composition.png"
+                 alt="Composição HDBSCAN de read_raw"
+                 style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+            <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+              Composição HDBSCAN: o cluster minoritário é notavelmente enriquecido para
+              tipos de sensor não-ADC que exigem transações de barramento multi-etapa.
+            </figcaption>
+          </figure>
+        </div>
+        <p>
+          A composição por subsistema valida a interpretação semântica:
+        </p>
+        <ul>
+          <li>
+            <strong>C0: Padrão ADC canônico (83%)</strong>. Funções seguem a estrutura IIO
+            estabelecida: <code>iio_device_claim_direct_mode</code>, despacho por
+            <code>mask</code> via <code>switch</code>, tratamento de
+            <code>IIO_CHAN_INFO_RAW</code>, <code>IIO_CHAN_INFO_SCALE</code> e
+            <code>IIO_CHAN_INFO_SAMP_FREQ</code>, release de direct mode. É o idioma
+            consolidado de ADCs e da maioria dos drivers de sensores simples.
+          </li>
+          <li>
+            <strong>C1: Leitura pesada de protocolo (17%)</strong>. Funções com lógica mais
+            elaborada: <code>mutex_lock</code> explícito em torno de transações I2C/SPI,
+            conversão big-endian (<code>be16_to_cpu</code>), helpers separados de despacho
+            de canal. Sensores químicos (CO₂, umidade), de proximidade e de temperatura
+            dominam este cluster, pois suas medições exigem interações multi-etapa com o hardware
+            em vez de uma única leitura de registrador.
+          </li>
+        </ul>
+
+        <h3 id="read-similarity">2.5) Similaridade Intra e Inter-cluster</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/read-raw-similarity.png"
+               alt="Similaridade intra-cluster de read_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Distribuição de similaridade cosseno entre pares dentro de cada cluster:
+            léxica muito baixa (~0,11), semântica muito alta (~0,78).
+          </figcaption>
+        </figure>
+        <p>
+          O padrão de similaridade confirma a assinatura de interface bem especificada:
+          funções dentro de cada cluster têm <strong>alta similaridade semântica (~0,78)</strong>
+          mas <strong>baixíssima similaridade léxica (~0,11)</strong>. O contrato da API é
+          compartilhado enquanto os detalhes específicos de hardware divergem completamente.
+        </p>
+        <p>
+          O número mais importante desta análise é a <strong>similaridade entre centroides dos
+          dois clusters: 0,93</strong>. Os dois clusters são quase indistinguíveis ao nível dos
+          centroides; o modelo UniXcoder os vê como tipos semânticos quase idênticos. A
+          separação capturada em k=2 é um <em>fork estilístico sutil mas real</em>, não uma
+          diferença fundamental de função. Isso é consistente com ambos os grupos implementando
+          o mesmo contrato IIO, apenas com estratégias distintas de interação com o hardware.
+        </p>
+
+        <h3 id="read-authors">2.6) Autores e Tendência Temporal</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/read-raw-top-authors-time.png"
+               alt="Top autores e tendência temporal de read_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Contribuições por cluster ao longo do tempo (2011-2026). C0 domina
+            consistentemente; C1 mantém ~10-15% estável. Alguns autores mostram
+            preferências estilísticas claras.
+          </figcaption>
+        </figure>
+        <p>
+          A maioria dos autores prolíficos contribui para ambos os clusters, mas alguns mostram
+          preferências de estilo claras: Alexandru Ardelean, Peter Meerwald e Andreas Klinger
+          concentram-se fortemente em C0; Gwendal Grignou escreve quase exclusivamente no
+          estilo C1. O gráfico temporal mostra C0 dominante ao longo de todo o período
+          2011-2026, com C1 contribuindo uma fração estável de ~10-15% por ano.
+          <strong>Não há tendência de deriva ou convergência</strong>: os dois estilos
+          coexistem em equilíbrio estável.
+        </p>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           3) WRITE_RAW
+           ══════════════════════════════════════════════════════ -->
+      <section class="relato-section" id="write-raw">
+        <h2>3) <code>write_raw</code> (n = 449)</h2>
+        <p>
+          O K-Means seleciona k=5 (silhouette = 0,4768); o HDBSCAN encontra 3 clusters com
+          <strong>0% de ruído</strong>, ou seja, toda função se encaixa limpo em algum grupo.
+          A discrepância (5 vs. 3) tem explicação clara: os dois clusters isolados (C0 e C2
+          do K-Means) são detectados como grupos separados por ambos os algoritmos; o HDBSCAN
+          agrupa a nuvem principal como um único cluster enquanto o K-Means a subdivide em três
+          pela geometria de centroides.
+        </p>
+
+        <table style="width:100%; border-collapse:collapse; font-size:0.9rem; margin:1rem 0">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border)">
+              <th style="text-align:left; padding:6px 10px">Cluster</th>
+              <th style="text-align:center; padding:6px 10px">n</th>
+              <th style="text-align:left; padding:6px 10px">Função representativa</th>
+              <th style="text-align:left; padding:6px 10px">Subsistema</th>
+              <th style="text-align:center; padding:6px 10px">Sim. léxica</th>
+              <th style="text-align:center; padding:6px 10px">Sim. emb.</th>
+              <th style="text-align:left; padding:6px 10px">Caráter</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px"><strong>C0</strong></td>
+              <td style="padding:6px 10px; text-align:center">14</td>
+              <td style="padding:6px 10px"><code>als_write_raw</code></td>
+              <td style="padding:6px 10px">light (HID)</td>
+              <td style="padding:6px 10px; text-align:center">0,3687</td>
+              <td style="padding:6px 10px; text-align:center"><strong>0,8908</strong></td>
+              <td style="padding:6px 10px">Boilerplate HID, mais compacto</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px"><strong>C1</strong></td>
+              <td style="padding:6px 10px; text-align:center">113</td>
+              <td style="padding:6px 10px"><code>apds9306_write_raw</code></td>
+              <td style="padding:6px 10px">light</td>
+              <td style="padding:6px 10px; text-align:center">0,1684</td>
+              <td style="padding:6px 10px; text-align:center">0,7374</td>
+              <td style="padding:6px 10px">Despacho moderno, diversidade padrão</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px"><strong>C2</strong></td>
+              <td style="padding:6px 10px; text-align:center">16</td>
+              <td style="padding:6px 10px"><code>ad7793_write_raw</code></td>
+              <td style="padding:6px 10px">adc</td>
+              <td style="padding:6px 10px; text-align:center">0,4139</td>
+              <td style="padding:6px 10px; text-align:center">0,8435</td>
+              <td style="padding:6px 10px">Wrapper fino, segundo mais compacto</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px"><strong>C3</strong></td>
+              <td style="padding:6px 10px; text-align:center">99</td>
+              <td style="padding:6px 10px"><code>ad5064_write_raw</code></td>
+              <td style="padding:6px 10px">dac</td>
+              <td style="padding:6px 10px; text-align:center">0,1639</td>
+              <td style="padding:6px 10px; text-align:center">0,7147</td>
+              <td style="padding:6px 10px">DAC escrita direta</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px"><strong>C4</strong></td>
+              <td style="padding:6px 10px; text-align:center">207</td>
+              <td style="padding:6px 10px"><code>mcp4728_write_raw</code></td>
+              <td style="padding:6px 10px">dac</td>
+              <td style="padding:6px 10px; text-align:center">0,1020</td>
+              <td style="padding:6px 10px; text-align:center">0,7369</td>
+              <td style="padding:6px 10px">DAC geral, mais lexicamente diverso</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 id="write-umap">3.1) Estrutura UMAP</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/write-raw-umap2d.png"
+               alt="UMAP 2D de write_raw por subsistema e por cluster"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            UMAP 2D de <code>write_raw</code>: dois clusters pequenos visivelmente isolados
+            (canto inferior-esquerdo e superior-esquerdo) mais uma nuvem difusa principal.
+            Drivers DAC (verde) concentram-se no canto superior-direito da nuvem.
+          </figcaption>
+        </figure>
+        <p>
+          O espaço UMAP de <code>write_raw</code> é visivelmente mais fragmentado do que o de
+          <code>read_raw</code>: dois clusters pequenos claramente isolados emergem antes mesmo
+          do clustering. Um situa-se no canto inferior-esquerdo (UMAP-1 ~1,8-2,0, UMAP-2 ~2,8-3,2)
+          e outro no canto superior-esquerdo (UMAP-1 ~2,8-3,5, UMAP-2 ~6,8-7,2), separados da
+          nuvem principal. Drivers DAC tendem a se aglomerar no canto superior-direito; sensores
+          de luz ocupam o meio-esquerdo. Mais estrutura é visível aqui do que em <code>read_raw</code>
+          mesmo sem clustering.
+        </p>
+
+        <h3 id="write-kmeans">3.2) K-Means</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/write-raw-kmeans.png"
+               alt="Curva silhouette e scatter K-Means de write_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Curva de silhouette com pico modesto em k=5 (0,4768) e platô 0,46+ para k=5-9.
+            Scatter: C0 e C2 correspondem exatamente aos dois clusters isolados no UMAP.
+          </figcaption>
+        </figure>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/write-raw-kmeand-umap10d.png"
+               alt="K-Means UMAP 10D de write_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Clusters K-Means (k=5) sobre UMAP 10D: C0 e C2 perfeitamente isolados;
+            C1, C3 e C4 particionam a nuvem principal com alguma sobreposição.
+          </figcaption>
+        </figure>
+        <p>
+          A curva de silhouette é <strong>mais plana do que a de <code>read_raw</code></strong>.
+          O melhor k=5 (0,4768) é um pico modesto; o platô entre k=5-9 permanece acima de 0,46,
+          com queda em k=3 (0,386) e k=10. O platô plano sinaliza que estrutura genuína existe
+          na faixa de 5-9, mas as fronteiras entre os sub-clusters da nuvem principal são mais
+          suaves do que a separação dos dois clusters isolados.
+        </p>
+        <p>
+          A sobreposição entre C1 e C3 explica por que o HDBSCAN os funde num único cluster de densidade.
+        </p>
+
+        <h3 id="write-hdbscan">3.3) HDBSCAN</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/write-raw-hdbscan.png"
+               alt="HDBSCAN de write_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            HDBSCAN: 3 clusters, 0% de ruído. Os dois clusters pequenos isolados tornam-se
+            clusters independentes (C0=14, C1=16); toda a nuvem principal é fundida em C2=419.
+          </figcaption>
+        </figure>
+        <p>
+          O HDBSCAN identifica os mesmos dois grupos isolados como clusters independentes e
+          funde toda a nuvem principal em um único cluster (C2=419). Esse é o achado-chave
+          do HDBSCAN: a estrutura interna da nuvem (C1/C3/C4 do K-Means) <strong>não é
+          separada por densidade</strong>; os três grupos K-Means compartilham regiões de
+          densidade sobrepostas e só podem ser distinguidos por geometria de centroides.
+        </p>
+
+        <h3 id="write-composition">3.4) Composição por Subsistema</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.2rem 0">
+          <figure style="margin:0">
+            <img src="../images/report-16/write-raw-composition.png"
+                 alt="Composição K-Means de write_raw"
+                 style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+            <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+              Composição K-Means (k=5): C0 dominado por light/HID; C3 por dac (~50%);
+              C2 por adc; C4 é o mais heterogêneo.
+            </figcaption>
+          </figure>
+          <figure style="margin:0">
+            <img src="../images/report-16/write-raw-hdbscan-composition.png"
+                 alt="Composição HDBSCAN de write_raw"
+                 style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+            <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+              Composição HDBSCAN (3 clusters): os dois grupos isolados mantêm sua identidade;
+              a nuvem principal fundida contém todos os subsistemas.
+            </figcaption>
+          </figure>
+        </div>
+        <p>Os cinco clusters capturam padrões arquiteturais distintos de escrita:</p>
+        <ul>
+          <li>
+            <strong>C0: Boilerplate HID (n=14)</strong>. A maior similaridade de embedding de
+            toda a análise (<strong>0,8908</strong>). Drivers de sensores HID delegam diretamente
+            para helpers de framework (<code>hid_sensor_write_samp_freq_value</code>,
+            <code>hid_sensor_write_raw_hyst_value</code>). Implementações quase idênticas em
+            estrutura, com um <code>switch</code> fino de dois ou três casos chamando a mesma API
+            de framework.
+          </li>
+          <li>
+            <strong>C1: Despacho moderno com guard (n=113)</strong>. Funções que usam o idioma
+            <code>guard(mutex)</code> de escopo moderno e despacham para funções setter dedicadas
+            por atributo (<code>_intg_time_set</code>, <code>_scale_set</code>,
+            <code>_sampling_freq_set</code>). Comum em sensores de luz e proximidade recentes.
+          </li>
+          <li>
+            <strong>C2: Wrapper fino / escrita diferida (n=16)</strong>. Segunda maior
+            similaridade de embedding (0,8435). Funções mínimas: claim direct mode, chamar um
+            helper interno <code>__write_raw</code>, release direct mode. Padrão de indireção
+            típico de drivers ADC antigos onde a lógica de escrita vive em função separada com
+            lock próprio.
+          </li>
+          <li>
+            <strong>C3: DAC com escrita direta (n=99)</strong>. Drivers DAC que validam o range
+            do valor e escrevem diretamente no hardware
+            (<code>ad5064_write</code>, <code>_cmd_write_input_n_update_n</code>). Mantêm cache
+            de valores de saída DAC e os atualizam sincronamente. Padrão dominante de 2013-2020,
+            em declínio desde então.
+          </li>
+          <li>
+            <strong>C4: DAC com staging de canal (n=207, maior)</strong>. O cluster maior e
+            lexicamente mais diverso. Drivers DAC que armazenam o novo valor numa estrutura de
+            canal e chamam uma função de commit programático (<code>_program_channel_cfg</code>).
+            A separação entre staging de valor e aplicação ao hardware é o padrão distintivo.
+            <strong>Dominante nos patches recentes de 2022-2026.</strong>
+          </li>
+        </ul>
+
+        <h3 id="write-similarity">3.5) Similaridade Intra e Inter-cluster</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/write-raw-similarity.png"
+               alt="Similaridade intra-cluster de write_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Distribuição de similaridade intra-cluster para <code>write_raw</code>. C0 e C2
+            têm as distribuições mais estreitas e deslocadas à direita, ilhas de boilerplate.
+            O heatmap de centroides mostra C2 como o mais semanticamente distinto de todos.
+          </figcaption>
+        </figure>
+        <p>
+          C0 e C2 se destacam com as maiores similaridades de embedding (0,89 e 0,84);
+          funções dentro deles são quase cópias semânticas. Estas são as verdadeiras
+          <strong>ilhas de boilerplate</strong>. C3 tem a menor similaridade interna (0,71),
+          refletindo variação entre diferentes ICs DAC dentro do mesmo padrão arquitetural.
+        </p>
+        <p>
+          O <strong>heatmap de centroides inter-cluster</strong> revela que C2 (wrapper fino)
+          é o cluster semanticamente mais distinto, com as menores similaridades cruzadas
+          (0,71-0,76 contra todos os outros). O padrão
+          <code>claim_direct_mode → call_internal → release</code> é genuinamente diferente
+          dos demais estilos de <code>write_raw</code>. Os três clusters da nuvem principal
+          (C1/C3/C4) são muito similares entre si (0,93-0,96), o que explica por que o HDBSCAN
+          os funde.
+        </p>
+
+        <h3 id="write-authors">3.6) Autores e Tendência Temporal</h3>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/write-raw-top-authors.png"
+               alt="Top autores e tendência temporal de write_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Principais contribuidores por cluster: Jonathan Cameron concentra-se em C1
+            (guard moderno); Javier Carrasco escreve exclusivamente em C2 (wrapper fino);
+            Peter Meerwald favorece C3 (DAC direto); William Breathitt Gray concentra-se em C4.
+          </figcaption>
+        </figure>
+        <p>
+          A identidade do autor correlaciona com o cluster em <code>write_raw</code> de forma
+          mais pronunciada do que em <code>read_raw</code>:
+        </p>
+        <ul>
+          <li><strong>Jonathan Cameron</strong> concentra-se em C1 (despacho moderno com guard);</li>
+          <li><strong>Javier Carrasco</strong> escreve exclusivamente em C2 (wrappers finos);</li>
+          <li><strong>Peter Meerwald</strong> favorece fortemente C3 (DAC escrita direta);</li>
+          <li><strong>William Breathitt Gray</strong> concentra-se em C4 (DAC com staging).</li>
+        </ul>
+        <p>
+          Isso sugere que <strong>preferências individuais de codificação</strong>, como estilo de
+          mutex e profundidade de delegação, são um dos fatores da estrutura de clusters,
+          capturado pelos embeddings. A tendência temporal é igualmente informativa: C4 é o
+          cluster de crescimento dominante desde 2013 e hoje representa a maioria das
+          contribuições recentes (2022-2026); C3 estava proeminente em 2013-2020 mas está em
+          declínio; C0 aparece principalmente em 2013-2014, um padrão historicamente delimitado
+          ao período de adição dos drivers HID IIO.
+        </p>
+      </section>
+
+      <!-- ── 4) Comparativo ── -->
+      <section class="relato-section" id="comparativo">
+        <h2>4) Comparativo e Síntese</h2>
+
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/comparison.png"
+               alt="Comparativo de métricas entre read_raw e write_raw"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Comparativo de métricas-chave entre as duas operações.
+          </figcaption>
+        </figure>
+        <figure style="margin:1.2rem 0">
+          <img src="../images/report-16/diversity-comparison.png"
+               alt="Scatter de diversidade por cluster em ambas as operações"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Scatter léxica x embedding por cluster. Clusters de boilerplate (C0, C2 de
+            <code>write_raw</code>) aparecem no canto de baixa diversidade léxica e
+            alta semântica; os demais convergem na região de alta léxica / moderada semântica.
+          </figcaption>
+        </figure>
+
+        <table style="width:100%; border-collapse:collapse; font-size:0.9rem; margin:1rem 0">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border)">
+              <th style="text-align:left; padding:6px 10px">Métrica</th>
+              <th style="text-align:center; padding:6px 10px"><code>read_raw</code></th>
+              <th style="text-align:center; padding:6px 10px"><code>write_raw</code></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px">n funções</td>
+              <td style="padding:6px 10px; text-align:center">762</td>
+              <td style="padding:6px 10px; text-align:center">449</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px">K-Means k (melhor)</td>
+              <td style="padding:6px 10px; text-align:center">2</td>
+              <td style="padding:6px 10px; text-align:center">5</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px">K-Means silhouette</td>
+              <td style="padding:6px 10px; text-align:center"><strong>0,5231</strong></td>
+              <td style="padding:6px 10px; text-align:center">0,4768</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px">HDBSCAN clusters</td>
+              <td style="padding:6px 10px; text-align:center">2</td>
+              <td style="padding:6px 10px; text-align:center">3</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px">HDBSCAN ruído</td>
+              <td style="padding:6px 10px; text-align:center">1,2%</td>
+              <td style="padding:6px 10px; text-align:center"><strong>0,0%</strong></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:6px 10px">Sim. entre centroides</td>
+              <td style="padding:6px 10px; text-align:center">0,93</td>
+              <td style="padding:6px 10px; text-align:center">0,71-0,96</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px">Acoplamento autor-cluster</td>
+              <td style="padding:6px 10px; text-align:center">Fraco</td>
+              <td style="padding:6px 10px; text-align:center"><strong>Forte</strong></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>Cinco conclusões cruzadas emergem:</p>
+        <ol>
+          <li>
+            <strong><code>read_raw</code> tem um estilo dominante e um estilo minoritário.</strong>
+            A divisão 83%/17% é estável ao longo do tempo e entre autores. A alta similaridade
+            entre centroides (0,93) indica que ambos os grupos fazem fundamentalmente a mesma
+            coisa; o split captura um gradiente (leitura simples de registrador vs. leitura
+            pesada de protocolo), não uma diferença categórica.
+          </li>
+          <li>
+            <strong><code>write_raw</code> se fragmenta em mais estilos.</strong> Reflete a
+            diversidade do que está sendo escrito: frequência, escala, offset, valor bruto DAC,
+            mais idiomas específicos de subsistema. Cinco clusters capturam variação real, não ruído.
+          </li>
+          <li>
+            <strong>O framework HID cria o código mais estereotipado do dataset.</strong> C0
+            (emb sim = 0,89): drivers usando helpers <code>hid_sensor_*</code> produzem
+            implementações de <code>write_raw</code> quase idênticas, consequência direta da
+            abstração do framework. É uma ilha de boilerplate delimitada historicamente
+            (2013-2014).
+          </li>
+          <li>
+            <strong>Identidade do autor correlaciona com cluster em <code>write_raw</code>.</strong>
+            Jonathan Cameron (guard moderno), Javier Carrasco (wrapper fino), Peter Meerwald
+            (DAC direto) e William Breathitt Gray (DAC com staging) escrevem cada um
+            predominantemente em seu cluster, o que revela preferências idiomáticas individuais
+            detectáveis pelos embeddings.
+          </li>
+          <li>
+            <strong>C4 de <code>write_raw</code> é a direção futura.</strong> Sua dominância
+            crescente em 2022-2026 e grande tamanho (n=207) indicam que representa o padrão
+            atual de facto: writes DAC com staging de canal e função de commit. Já C3
+            (escritas síncronas diretas) é um padrão mais antigo em declínio.
+          </li>
+        </ol>
+      </section>
+
+      <!-- ── 5) Conclusão ── -->
+      <section class="relato-section" id="conclusao">
+        <h2>5) Conclusão</h2>
+        <p>
+          Essa fase da disciplina foi interessante para desenvolver um pouco da minha pesquisa de
+          tese, aplicando conhecimentos de ciência de dados num contexto que já conheço do Ciclo
+          Kernel Linux. Consegui ir de um dataset bruto de patches até clusters com semântica
+          interpretável, o que não era óbvio que seria possível quando comecei. Como trabalho
+          futuro, caso haja tempo até o pitch final, quero explorar uma <strong>revision trajectory
+          analysis</strong>. As análises dos Relatos 14–16 operam sobre um snapshot estático, a
+          versão final de cada função. Isso ignora o processo de revisão, que é a dinâmica central
+          do desenvolvimento open-source no kernel: um patch raramente é aceito na primeira
+          submissão, a mediana no dataset é v3 e há casos chegando a v17.
+        </p>
+        <p>
+          Se o espaço de embeddings tem estrutura (e os clusters deste relato mostram que tem),
+          então o caminho de um patch nesse espaço durante revisão é informativo. Um
+          <strong>deslocamento alto</strong> entre versões sugere revisão substantiva de lógica;
+          um <strong>deslocamento baixo com múltiplas versões</strong> indica que as revisões foram
+          superficiais (estilo, comentários, mensagem de commit). Mais interessante ainda é
+          identificar <strong>atratores</strong>: padrões de implementação para os quais os
+          maintainers sistematicamente direcionam os patches durante revisão. Isso seria evidência
+          de que a comunidade converge para convenções estruturais estabelecidas, e forneceria
+          uma operacionalização mais precisa de "esforço de revisão" do que
+          <code>patch_version</code> sozinho.
+        </p>
+
+        <h3>Autocrítica</h3>
+        <p>
+          No geral, o projeto produz análises exploratórias consistentes internamente, mas com
+          ausência de validação externa, nenhuma conclusão é verificada contra um ground truth
+          observável. Isso é típico de estudos de mineração de repositórios, mas precisa ser
+          reconhecido. As limitações mais sérias:
+        </p>
+
+        <h4>Críticas que afetam as conclusões</h4>
+        <ul>
+          <li>
+            <strong>Não sei quais patches foram aceitos.</strong> O dataset é de patches enviados
+            à mailing list, não de código que entrou no kernel. Um patch em v5 pode ter sido aceito
+            ou abandonado, mas não tenho como distinguir sem cruzar com o histórico de merges do
+            repositório (<code>git log --merges</code>). Qualquer conclusão sobre "qualidade" baseada
+            em <code>patch_version</code> é especulativa.
+          </li>
+          <li>
+            <strong>76,5% das funções foram ignoradas.</strong> Das 16.670 funções no dataset limpo,
+            apenas 3.922 (23,5%) têm sufixo de operação IIO reconhecido e participam do clustering.
+            As outras 12.748 (helpers, ISRs, rotinas de configuração de hardware) são descartadas
+            em silêncio. Se problemas de qualidade estão nesses helpers, o modelo não captura.
+          </li>
+          <li>
+            <strong>Truncamento do UniXcoder em 512 tokens.</strong> Funções longas como
+            <code>probe</code> (média de 437 nós AST) provavelmente são truncadas com frequência.
+            O embedding representa o começo da função, não a função inteira. Isso cria um viés
+            sistemático: funções longas parecem mais similares entre si do que realmente são, porque
+            o modelo vê só o cabeçalho delas.
+          </li>
+        </ul>
+
+        <h4>Críticas metodológicas</h4>
+        <ul>
+          <li>
+            <strong>UMAP sem análise de sensibilidade.</strong> Usei <code>n_neighbors=15</code> e
+            <code>min_dist=0.1</code> sem justificativa. Diferentes hiperparâmetros produzem layouts
+            qualitativamente distintos, e os clusters K-Means são definidos no espaço UMAP-10D,
+            qualquer instabilidade nessa projeção propaga para todas as análises subsequentes.
+          </li>
+          <li>
+            <strong>K-Means pressupõe geometria que provavelmente não existe.</strong>
+            O HDBSCAN do Relato 15 encontrou clusters de tamanhos muito diferentes (15 a 1.464
+            membros), o que é geometricamente incompatível com a suposição de clusters esféricos
+            e balanceados do K-Means. O silhouette score favorece o K-Means pela sua própria
+            definição, não necessariamente pela qualidade real da partição.
+          </li>
+          <li>
+            <strong>UniXcoder não foi treinado em código de kernel.</strong> O modelo foi
+            pré-treinado em repositórios GitHub públicos. Idiomas específicos do Linux, 
+            <code>container_of</code>, <code>IS_ERR</code>, padrões de regmap, disciplina de
+            locking com <code>mutex_lock</code>/<code>spin_lock</code>, podem não estar bem
+            representados no espaço semântico.
+          </li>
+        </ul>
+
+        <h4>Críticas de escopo</h4>
+        <ul>
+          <li>
+            <strong>O IIO é um subsistema homogêneo.</strong> Todos os drivers implementam as
+            mesmas callbacks para expor sensores ao userspace. Isso facilita o agrupamento mas
+            limita a generalização, pois os resultados provavelmente não se transferem para subsistemas
+            como <code>drivers/net</code> ou <code>fs/</code>, onde as interfaces são muito mais
+            heterogêneas.
+          </li>
+          <li>
+            <strong>Autoria sem deduplicação de identidade.</strong> O campo <code>from</code> é
+            usado diretamente como identificador. Um mesmo contribuidor com dois endereços de e-mail
+            aparece como dois autores distintos. Em 15 anos de histórico, isso é comum, pois pessoas
+            mudam de empresa, de domínio, ou usam aliases.
+          </li>
+          <li>
+            <strong>A chave de trajetória pode criar grupos espúrios.</strong> Para a revision
+            trajectory analysis planejada, agrupar versões de um mesmo patch por
+            <code>(autor, assunto normalizado, arquivo, função)</code> assume que dois patches com
+            o mesmo autor, assunto e função são versões do mesmo patch. Mas patches independentes
+            que reescrevem a mesma função com assuntos similares criariam uma "trajetória" espúria.
+            Uma validação manual de uma amostra seria necessária antes de confiar nos resultados.
+          </li>
+        </ul>
+      </section>
+
+    </div>
+
+    <hr class="nav-divider" />
+    <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
+      <a href="relato-15.html">← Análise de Agrupamento</a>
+      <a href="relato-17.html">Análise de Trajetória →</a>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      <a href="../index.html">← Voltar ao início</a>
+      &nbsp;·&nbsp; MAC5856 Desenvolvimento de Software Livre · IME-USP
+    </p>
+  </footer>
+  <script src="../js/copy-code.js"></script>
+</body>
+
+</html>

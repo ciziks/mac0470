@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC5856 - Relato 15</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <div class="top-nav">
+    <a href="../index.html">← Início</a>
+    <span class="site-name"><strong>@ciziks</strong> · MAC5856</span>
+  </div>
+
+  <div class="relato-hero">
+    <div class="tut-label">
+      <span class="tut-number">Relato 15</span>
+      <span class="tut-date">· 21/06/2026</span>
+      <span class="badge badge-done">Completo</span>
+    </div>
+    <h1>Análise de Agrupamento sobre Embeddings do Subsistema IIO</h1>
+    <p class="description">
+      Aplicação de algoritmos de clustering (K-Means, HDBSCAN, UMAP + DBSCAN) sobre os embeddings
+      UniXcoder das 16.670 implementações de funções IIO, com investigação de coesão por driver,
+      distribuição por operação e fingerprinting de autoria - revelando que clusters significativos
+      emergem apenas quando a análise é restrita a uma operação específica.
+    </p>
+    <div class="tags">
+      <span class="tag">clustering</span>
+      <span class="tag">UMAP</span>
+      <span class="tag">HDBSCAN</span>
+      <span class="tag">K-Means</span>
+      <span class="tag">UniXcoder</span>
+      <span class="tag">IIO</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="doc-content">
+      <nav class="toc">
+        <h3>Sumário</h3>
+        <ol>
+          <li><a href="#umap">1) Redução Dimensional (UMAP)</a></li>
+          <li><a href="#kmeans">2) K-Means Clustering</a></li>
+          <li><a href="#hdbscan">3) HDBSCAN</a></li>
+          <li><a href="#umap-dbscan">4) UMAP + DBSCAN</a></li>
+          <li><a href="#cluster-iio">5) Distribuição por Operação IIO</a></li>
+          <li><a href="#cluster-composition">6) Composição dos Clusters</a></li>
+          <li><a href="#cluster-time">7) Evolução Temporal dos Clusters</a></li>
+          <li><a href="#cohesion">8) Coesão por Driver</a></li>
+          <li><a href="#authorship">9) Fingerprinting de Autoria</a></li>
+          <li><a href="#staging">10) Staging vs. Mainline</a></li>
+          <li><a href="#conclusao">11) Conclusão</a></li>
+        </ol>
+      </nav>
+
+      <!-- ── 1) UMAP ── -->
+      <section class="relato-section" id="umap">
+        <h2>1) Redução Dimensional (UMAP)</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/umap2d.png"
+               alt="Projeção UMAP 2D dos embeddings UniXcoder"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Projeção UMAP 2D sobre os embeddings UniXcoder das 16.670 implementações.
+            Cada ponto representa uma função; a cor indica a operação IIO associada.
+          </figcaption>
+        </figure>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/umap10d.png"
+               alt="Projeção UMAP 10D dos embeddings UniXcoder"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Projeção UMAP 10 dimensões - espaço intermediário utilizado como entrada
+            para os algoritmos de clustering denso (HDBSCAN e DBSCAN).
+          </figcaption>
+        </figure>
+        <p>
+          O ponto de partida foi reduzir os embeddings de 768 dimensões produzidos pelo UniXcoder
+          para um espaço de menor dimensão via UMAP. A projeção 2D serve como visualização;
+          a projeção 10D preserva mais estrutura local e foi usada como entrada para HDBSCAN e DBSCAN.
+        </p>
+        <p>
+          O mapa 2D revela uma nuvem densa e contínua, sem separação clara entre operações -
+          consistente com os scores de diversidade semântica baixos (0,24 a 0,34) observados no
+          Relato 14. Ainda assim, é possível identificar regiões de maior densidade que sugerem
+          subestruturas latentes, motivando a aplicação dos algoritmos de agrupamento.
+        </p>
+      </section>
+
+      <!-- ── 2) K-Means ── -->
+      <section class="relato-section" id="kmeans">
+        <h2>2) K-Means Clustering</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/kmeans.png"
+               alt="K-Means clustering sobre projeção UMAP dos embeddings IIO"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Resultado do K-Means aplicado sobre a projeção UMAP, com o número de clusters
+            escolhido via método do cotovelo e silhouette score.
+          </figcaption>
+        </figure>
+        <p>
+          O K-Means foi aplicado como baseline, para comparação com os algoritmos baseados em densidade.
+        </p>
+        <p>
+          Os clusters resultantes cobrem o espaço de forma razoável, mas as fronteiras são
+          difusas e sem interpretação semântica imediata. Quando os clusters são coloridos por
+          operação IIO, nenhuma operação domina um cluster de forma clara - confirmando que o
+          tipo de operação não é o principal fator de separação no espaço semântico global.
+          Isso motivou investigar algoritmos mais flexíveis quanto à forma dos clusters.
+        </p>
+      </section>
+
+      <!-- ── 3) HDBSCAN ── -->
+      <section class="relato-section" id="hdbscan">
+        <h2>3) HDBSCAN</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/hdbscan.png"
+               alt="HDBSCAN sobre embeddings IIO"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Clusters identificados pelo HDBSCAN. Pontos cinzas são classificados como ruído
+            (outliers) pelo algoritmo.
+          </figcaption>
+        </figure>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/hdbscan-outliers-umap.png"
+               alt="Outliers HDBSCAN projetados no UMAP"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Distribuição espacial dos outliers HDBSCAN na projeção UMAP 2D - outliers
+            concentram-se nas regiões de menor densidade da nuvem.
+          </figcaption>
+        </figure>
+        <p>
+          A fração de outliers identificada pelo HDBSCAN é informativa por si só: implementações
+          marcadas como ruído tendem a ser funções incomuns - seja por complexidade elevada, por
+          padrões de código idiossincráticos do driver, ou por operações raras com poucas amostras.
+          O segundo gráfico mostra que esses outliers se distribuem nas bordas da nuvem UMAP,
+          longe dos núcleos densos de cada cluster.
+        </p>
+
+        <h3>Hierarchical Clustering</h3>
+        <p>
+          Além do HDBSCAN, tentei aplicar <strong>Hierarchical Clustering (linkage aglomerativo)</strong>
+          sobre uma amostra dos embeddings. O resultado foi inviável para análise: o dendrograma
+          gerado sobre milhares de pontos tornou-se completamente ilegível - os ramos colapsam
+          numa massa indistinta antes de qualquer corte significativo. Além disso, a estrutura
+          contínua e sem separação clara entre grupos no espaço semântico (como visto no UMAP)
+          torna o Hierarchical Clustering pouco relevante para esse contexto: sem clusters bem
+          definidos, a hierarquia resultante reflete ruído mais do que estrutura real.
+          Por isso, o método foi descartado em favor do HDBSCAN e do pipeline UMAP + DBSCAN.
+        </p>
+      </section>
+
+      <!-- ── 4) UMAP + DBSCAN ── -->
+      <section class="relato-section" id="umap-dbscan">
+        <h2>4) UMAP + DBSCAN</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/umap+dbscan.png"
+               alt="Pipeline UMAP + DBSCAN sobre embeddings IIO"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Clusters identificados pelo pipeline UMAP 10D → DBSCAN. A projeção 2D é usada
+            apenas para visualização; o clustering ocorre no espaço 10D.
+          </figcaption>
+        </figure>
+        <p>
+          O resultado é qualitativamente similar ao HDBSCAN: clusters difusos, com sobreposição
+          considerável entre operações IIO. A ausência de clusters limpos confirma que a variação
+          semântica no dataset global é baixa demais para que qualquer algoritmo de agrupamento
+          produza estruturas interpretáveis sem filtrar por operação.
+        </p>
+      </section>
+
+      <!-- ── 5) Distribuição por IIO ── -->
+      <section class="relato-section" id="cluster-iio">
+        <h2>5) Distribuição por Operação IIO</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/cluster-by-iio.png"
+               alt="Distribuição das operações IIO por cluster"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Proporção de cada operação IIO dentro de cada cluster identificado. A mistura
+            homogênea entre clusters evidencia que operação não é o fator dominante de separação.
+          </figcaption>
+        </figure>
+        <p>
+          Para avaliar se os clusters têm significado funcional, foi calculada a distribuição
+          das operações IIO dentro de cada grupo. O resultado reforça a hipótese levantada
+          pelo UMAP: a maioria dos clusters contém um mix heterogêneo de operações,
+          <code>probe</code>, <code>read_raw</code>, <code>remove</code> e <code>write_raw</code>
+          coexistem em proporções similares em quase todos os clusters.
+        </p>
+        <p>
+          Isso sugere que o agrupamento está capturando padrões <em>transversais</em> às
+          operações - possivelmente relacionados a estilo de código, complexidade estrutural
+          ou família de hardware - mais do que a semântica específica de cada callback IIO.
+          Para extrair clusters com significado funcional claro, é necessário restringir
+          o dataset a uma única operação antes de aplicar o clustering.
+        </p>
+      </section>
+
+      <!-- ── 6) Composição ── -->
+      <section class="relato-section" id="cluster-composition">
+        <h2>6) Composição dos Clusters</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/cluster-composition.png"
+               alt="Composição dos clusters: métricas por grupo"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Distribuição de métricas estruturais (complexidade ciclomática, nós AST, profundidade)
+            dentro de cada cluster - perfis distintos emergem, mesmo sem separação limpa por operação.
+          </figcaption>
+        </figure>
+        <p>
+          Mesmo sem separação por operação, os clusters apresentam perfis estruturais distintos
+          quando analisados pelas métricas calculadas no Relato 14. Clusters de alta complexidade
+          ciclomática tendem a concentrar funções com muitos nós AST e maior profundidade de
+          aninhamento - um sinal de que o espaço semântico captura, ao menos parcialmente,
+          a complexidade estrutural das implementações.
+        </p>
+        <p>
+          Esse perfil de composição é útil como diagnóstico: clusters com baixa complexidade
+          e poucos nós AST correspondem majoritariamente a boilerplate (<code>remove</code>,
+          <code>suspend</code>), enquanto clusters com alta variância interna misturam operações
+          complexas de diferentes tipos.
+        </p>
+      </section>
+
+      <!-- ── 7) Evolução temporal ── -->
+      <section class="relato-section" id="cluster-time">
+        <h2>7) Evolução Temporal dos Clusters</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/cluster-over-time.png"
+               alt="Evolução da distribuição dos clusters ao longo do tempo"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Proporção de cada cluster por ano de submissão dos patches - permite observar
+            se certas práticas de implementação ganharam ou perderam espaço ao longo do tempo.
+          </figcaption>
+        </figure>
+        <p>
+          A análise temporal verifica se a composição dos clusters mudou ao longo do histórico
+          de patches IIO. Alguns clusters mostram variação na sua proporção relativa ao longo
+          dos anos, o que pode refletir a adoção de novos padrões de implementação no subsistema -
+          por exemplo, migrações de APIs, introdução de novos helpers ou mudanças de convenção
+          promovidas pelos maintainers.
+        </p>
+        <p>
+          Sem filtrar por operação, a variação pode simplesmente refletir mudança no volume de patches por tipo, não evolução de práticas.
+        </p>
+      </section>
+
+      <!-- ── 8) Coesão por driver ── -->
+      <section class="relato-section" id="cohesion">
+        <h2>8) Coesão por Driver</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/driver-cohesion.png"
+               alt="Coesão semântica intradriver"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Score de coesão semântica intradriver: similaridade cosseno média entre todas as
+            funções de um mesmo driver. Drivers com alta coesão mantêm estilo de implementação
+            consistente entre seus callbacks.
+          </figcaption>
+        </figure>
+        <p>
+          A coesão intradriver mede o quanto as funções de um mesmo arquivo-fonte se assemelham
+          no espaço de embeddings. Um driver com alta coesão tem todas as suas implementações
+          (probe, read_raw, write_raw…) semanticamente próximas - sinal de consistência de
+          estilo e possivelmente de autoria única ou de forte revisão por um maintainer específico.
+        </p>
+        <p>
+          Drivers com baixa coesão são candidatos prioritários para análise mais aprofundada,
+          possivelmente por terem múltiplos autores com estilos distintos ou por terem evoluído
+          de forma não uniforme ao longo do tempo.
+        </p>
+      </section>
+
+      <!-- ── 9) Fingerprinting ── -->
+      <section class="relato-section" id="authorship">
+        <h2>9) Fingerprinting de Autoria</h2>
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/authorship-fingerprinting.png"
+               alt="Fingerprinting de autoria via embeddings semânticos"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            Similaridade semântica média entre funções do mesmo autor vs. funções de autores
+            distintos - teste de se embeddings UniXcoder capturam estilo de codificação individual.
+          </figcaption>
+        </figure>
+        <p>
+          Uma hipótese interessante é que embeddings de código capturem idiossincrasias de
+          estilo suficientemente fortes para distinguir autores - um "fingerprint" semântico.
+          O gráfico compara a similaridade média entre pares de funções do mesmo autor
+          (<em>intra-author</em>) com pares de autores diferentes (<em>inter-author</em>).
+        </p>
+        <p>
+          O resultado é modesto: a diferença entre as distribuições existe mas é pequena,
+          sugerindo que o estilo individual contribui menos para a posição no espaço semântico
+          do que o tipo de operação implementada. Autores prolíficos (com muitas implementações
+          de tipos variados) tendem a ter coesão intra-autoria baixa - o tipo de callback
+          domina sobre o estilo pessoal.
+        </p>
+      </section>
+
+      <!-- ── 10) Staging vs. Mainline ── -->
+      <section class="relato-section" id="staging">
+        <h2>10) Staging vs. Mainline - Validação da Distribuição de Clusters</h2>
+
+        <p>
+          <code>drivers/staging/iio</code> é código explicitamente "em progresso". Se os clusters
+          K-Means capturam qualidade de código, funções de staging deveriam distribuir-se de forma
+          diferente das funções de mainline (<code>drivers/iio/</code>), concentrando-se nos
+          clusters associados a padrões menos maduros (ou mais maduros?).
+        </p>
+
+        <h3>Pipeline</h3>
+        <p>
+          O mesmo pipeline limpo utilizado no mainline foi aplicado ao staging:
+          parse dos arquivos-fonte em C, extração das implementações de funções IIO,
+          geração de embeddings UniXcoder de 768 dimensões (armazenados em
+          <code>data/staging_embeddings.npy</code>). Em seguida, cada função de staging foi
+          atribuída ao centróide K-Means mais próximo via <strong>similaridade cosseno no
+          espaço 768D</strong> sem re-fitting, usando a estrutura de clusters já estabelecida
+          no mainline como referência fixa.
+        </p>
+
+        <figure style="margin: 1.2rem 0">
+          <img src="../images/report-15/cluster-staging.png"
+               alt="Distribuição de clusters K-Means: staging vs. mainline"
+               style="width:100%; border-radius:6px; border:1px solid var(--border)" />
+          <figcaption style="font-size:0.82rem; color:var(--text-muted); margin-top:0.4rem">
+            <strong>Esquerda:</strong> fração de funções por cluster em mainline vs. staging.
+            <strong>Centro:</strong> razão log staging/mainline por cluster, verde indica
+            sobre-representação de staging, vermelho indica sub-representação.
+            <strong>Direita:</strong> para cada operação IIO, se o cluster dominante muda entre
+            staging e mainline.
+          </figcaption>
+        </figure>
+
+        <h3>Análise</h3>
+        <p>
+          O teste qui-quadrado de independência aplicado sobre as contagens por cluster rejeita
+          a hipótese de distribuições iguais, as distribuições são <strong>significativamente
+          diferentes</strong> entre staging e mainline. Isso já é o resultado mais importante:
+          os clusters aprendidos no mainline não são neutros em relação à maturidade do código.
+        </p>
+        <pre style="font-family: monospace; font-size: 0.85rem; background: #1e1e2e; color: #cdd6f4; border-radius: 6px; padding: 0.8rem 1rem; margin: 0.8rem 0; overflow-x: auto;">Chi-square test (staging vs mainline cluster distribution)
+χ² = 43.00   df = 5   p = 3.695e-08
+→ distributions are SIGNIFICANTLY different</pre>
+        <p>
+          O painel central torna isso concreto: alguns clusters aparecem
+          consistentemente sobre-representados em staging (razão > 1), enquanto outros são
+          dominados pelo mainline. A interpretação é direta, staging tende a cair em
+          regiões semânticas específicas do espaço de embeddings que o mainline evita,
+          sugerindo que essas regiões correspondem a padrões de implementação menos consolidados:
+          boilerplate incompleto, ausência de tratamento de erro padronizado, ou estruturas
+          de código que ainda não seguem as convenções do subsistema.
+        </p>
+        <p>
+          O painel da direita apresenta uma nuance importante: apenas <strong>2 das 18
+          operações IIO</strong> têm o cluster dominante diferente entre staging e mainline.
+          Ou seja, para a quase totalidade das operações, o cluster que concentra mais
+          implementações é o mesmo nos dois contextos. Isso não invalida o resultado do
+          qui-quadrado, mas localiza onde a
+          diferença está: não em qual cluster <em>domina</em> cada operação, mas em
+          <em>como as funções se distribuem</em> entre clusters dentro de cada operação.
+          Staging e mainline "gravitam" para os mesmos centróides por operação, porém com
+          proporções distintas nas caudas, o que o painel central captura melhor.
+        </p>
+        <p>
+          Em conjunto, os três painéis contam uma história coerente: o espaço semântico
+          aprendido no mainline <strong>não é neutro em relação à maturidade do código</strong>
+          (qui-quadrado rejeita uniformidade), a diferença manifesta-se em desvios de
+          proporção por cluster (painel central), mas qual cluster domina cada tipo de callback permanece estável em 16 das 18
+          operações (painel direito). Isso sugere que os clusters capturam principalmente
+          o <em>tipo de operação</em> e, de forma mais fraca, a maturidade do código;
+          staging não está em um espaço semântico radicalmente diferente, apenas distribuído
+          de forma ligeiramente distinta dentro da mesma estrutura de clusters.
+        </p>
+      </section>
+
+      <section class="relato-section" id="conclusao">
+        <h2>11) Conclusão</h2>
+        <p>
+          A análise de agrupamento global sobre os 16.670 embeddings UniXcoder confirma e
+          estende a conclusão do Relato 14: o espaço semântico do subsistema IIO é
+          <strong>denso e contínuo</strong>, sem fronteiras nítidas entre grupos. Nenhum
+          dos três algoritmos testados (K-Means, HDBSCAN, UMAP + DBSCAN) produziu clusters
+          com separação limpa por operação IIO ou por driver e o Hierarchical Clustering
+          foi descartado por ser inviável em escala e irrelevante dada a ausência de
+          estrutura hierárquica clara no espaço semântico.
+        </p>
+        <p>
+          O principal achado é um diagnóstico de limitação: <strong>clustering significativo
+          requer análise dentro de uma operação específica</strong>. Misturar
+          <code>probe</code>, <code>read_raw</code>, <code>write_raw</code> e <code>remove</code>
+          no mesmo espaço produz clusters que capturam variação transversal (complexidade,
+          estilo) mas não a semântica funcional de cada operação.
+        </p>
+        <p>
+          Por isso, o próximo relato restringirá a análise às duas operações mais
+          representativas do dataset:
+        </p>
+        <ul>
+          <li>
+            <strong><code>read_raw</code></strong> - <strong>762 implementações</strong>,
+            a operação central do subsistema IIO, responsável pela leitura de canais e
+            a mais semanticamente uniforme (diversidade semântica 0,237);
+          </li>
+          <li>
+            <strong><code>write_raw</code></strong> - <strong>449 implementações</strong>,
+            contrapartida de escrita, com maior diversidade semântica (0,303) e,
+            portanto, maior potencial para revelar subgrupos com estratégias distintas.
+          </li>
+        </ul>
+        <p>
+          A hipótese é que, dentro de uma única operação, o espaço semântico terá
+          variância suficiente para que os algoritmos de clustering produzam grupos
+          interpretáveis, possivelmente refletindo famílias de hardware, padrões de
+          acesso a registradores ou estratégias de tratamento de erro.
+        </p>
+      </section>
+
+    </div>
+
+    <hr class="nav-divider" />
+    <div class="tut-nav" style="max-width: 760px; margin: 0 auto; padding: 0 1.5rem 2rem">
+      <a href="relato-14.html">← Análise de Similaridade de Código</a>
+      <a href="relato-16.html">Clustering em read_raw e write_raw →</a>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      <a href="../index.html">← Voltar ao início</a>
+      &nbsp;·&nbsp; MAC5856 Desenvolvimento de Software Livre · IME-USP
+    </p>
+  </footer>
+  <script src="../js/copy-code.js"></script>
+</body>
+
+</html>
